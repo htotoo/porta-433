@@ -54,7 +54,6 @@ add_compile_options(-include ${CMAKE_CURRENT_BINARY_DIR}/flashsize.h)
 
 add_subdirectory(application)
 add_subdirectory(baseband)
-add_subdirectory(standalone)
 add_subdirectory(test)
 
 if(BOARD STREQUAL "PRALINE")
@@ -110,12 +109,6 @@ add_custom_target(
 	DEPENDS firmware ${FIRMWARE_FILENAME}
 )
 
-add_custom_target(
-	program-external-apps
-	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-	COMMAND ${PROJECT_SOURCE_DIR}/tools/copy_external_apps.sh
-	DEPENDS program standalone_apps
-)
 
 add_custom_command(
 	OUTPUT ${PPFW_FILENAME}
@@ -124,11 +117,10 @@ add_custom_command(
 	COMMAND mkdir -p firmware_tar/FIRMWARE
 	# Using VERSION_NOHASH to avoid dev builds piling up in the FIRMWARE folder of the sd card of testers in #test-drive
 	COMMAND cp ${FIRMWARE_FILENAME} firmware_tar/FIRMWARE/portapack-mayhem_${VERSION_NOHASH}.bin
-	COMMAND mkdir -p firmware_tar/APPS
-	COMMAND cp application/*.ppma firmware_tar/APPS
-	COMMAND cp standalone/*/*.ppmp firmware_tar/APPS
+	#COMMAND mkdir -p firmware_tar/APPS
+	#COMMAND cp application/*.ppma firmware_tar/APPS
 	COMMAND cd firmware_tar && tar -cvaf ../${PPFW_FILENAME} *
-	DEPENDS firmware ${FIRMWARE_FILENAME} standalone_apps
+	DEPENDS firmware ${FIRMWARE_FILENAME}
 	# Dont use VERBATIM here as it prevents usage of globbing (*)
 	# There shouldnt be any funny business in the filenames above :)
 )

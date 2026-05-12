@@ -100,7 +100,6 @@ include(${CHIBIOS_PORTAPACK}/os/ports/GCC/ARMCMx/LPC43xx_M0/port.cmake)
 include(${CHIBIOS}/os/kernel/kernel.cmake)
 include(${CHIBIOS_PORTAPACK}/os/various/fatfs_bindings/fatfs.cmake)
 include(${CHIBIOS}/test/test.cmake)
-include(external/external.cmake)
 
 # Define linker script file here
 set(LDSCRIPT ${PORTLD}/LPC43xx_M0.ld)
@@ -308,6 +307,7 @@ set(CPPSRC
 	apps/ui_rds.cpp
 	apps/ui_recon_settings.cpp
 	apps/ui_recon.cpp
+	apps/ui_sd_over_usb.cpp
 	apps/ui_search.cpp
 	apps/ui_settings.cpp
 	apps/ui_sonde.cpp
@@ -335,8 +335,6 @@ set(CPPSRC
 )
 
 set_source_files_properties(${CPPSRC} PROPERTIES COMPILE_FLAGS -flto) # Add lto flag to the non-external sources only
-
-list (APPEND CPPSRC ${EXTCPPSRC}) # Append external sources after setting lto flag to internal ones
 
 # C sources to be compiled in ARM mode regardless of the global setting.
 # NOTE: Mixing ARM and THUMB mode enables the -mthumb-interwork compiler
@@ -496,14 +494,13 @@ set_target_properties(${PROJECT_NAME}.elf PROPERTIES LINK_DEPENDS ${LDSCRIPT})
 add_definitions(${DEFS})
 include_directories(. ${INCDIR})
 link_directories(${LLIBDIR})
-target_link_libraries(${PROJECT_NAME}.elf ${LIBS} "-L${CMAKE_CURRENT_LIST_DIR}/external")
+#target_link_libraries(${PROJECT_NAME}.elf ${LIBS} "-L${CMAKE_CURRENT_LIST_DIR}/external")
 target_link_libraries(${PROJECT_NAME}.elf -Wl,-Map=${PROJECT_NAME}.map)
 target_link_libraries(${PROJECT_NAME}.elf -Wl,--print-memory-usage)
 
 add_custom_command(
 	OUTPUT ${PROJECT_NAME}.bin
-	COMMAND ${CMAKE_OBJCOPY} -v -O binary ${PROJECT_NAME}.elf ${PROJECT_NAME}.bin --remove-section=.external_app_*
-	COMMAND ${EXPORT_EXTERNAL_APP_IMAGES} ${PROJECT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_OBJCOPY} ${EXTAPPLIST}
+	COMMAND ${CMAKE_OBJCOPY} -v -O binary ${PROJECT_NAME}.elf ${PROJECT_NAME}.bin
 	DEPENDS ${PROJECT_NAME}.elf
 )
 

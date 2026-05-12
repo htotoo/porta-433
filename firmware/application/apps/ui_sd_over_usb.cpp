@@ -23,7 +23,7 @@
 #include "ui_sd_over_usb.hpp"
 #include "portapack_shared_memory.hpp"
 
-namespace ui::external_app::sdusb {
+namespace ui {
 
 SdOverUsbView::SdOverUsbView(NavigationView& nav)
     : nav_(nav) {
@@ -46,7 +46,7 @@ SdOverUsbView::SdOverUsbView(NavigationView& nav)
         sdcStop(&SDCD1);
 
         portapack::shutdown(true, false);
-        baseband::run_prepared_image(portapack::memory::map::m4_code.base());
+        m4_init(portapack::spi_flash::image_tag_usb_sd, portapack::memory::map::m4_code, false);
         m0_halt();
         /* will not return*/
     };
@@ -56,4 +56,4 @@ void SdOverUsbView::focus() {
     button_run.focus();
 }
 
-}  // namespace ui::external_app::sdusb
+}  // namespace ui
