@@ -32,8 +32,6 @@
 #include "ui_about_simple.hpp"
 #include "ui_adsb_rx.hpp"
 #include "ui_aprs_rx.hpp"
-#include "ui_aprs_tx.hpp"
-#include "ui_btle_rx.hpp"
 #include "ui_debug.hpp"
 #include "ui_encoders.hpp"
 #include "ui_fileman.hpp"
@@ -41,18 +39,14 @@
 #include "ui_font_fixed_8x16.hpp"
 #include "ui_freqman.hpp"
 #include "ui_looking_glass_app.hpp"
-#include "ui_mictx.hpp"
 
 #include "ui_playlist.hpp"
-#include "ui_recon.hpp"
 #include "ui_search.hpp"
 #include "ui_settings.hpp"
 #include "ui_ss_viewer.hpp"
-// #include "ui_test.hpp"
 #include "ui_sd_over_usb.hpp"
 #include "ui_text_editor.hpp"
 #include "ui_touchtunes.hpp"
-#include "ui_weatherstation.hpp"
 #include "ui_battinfo.hpp"
 
 #include "ais_app.hpp"
@@ -65,7 +59,7 @@
 #include "png_writer.hpp"
 #include "file_path.hpp"
 #include "ff.h"
-
+#include "audio.hpp"
 #include <locale>
 #include <codecvt>
 
