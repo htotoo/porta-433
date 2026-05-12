@@ -82,6 +82,7 @@ const NavigationView::AppList NavigationView::appList = {
     {nullptr, "Utilities", HOME, Color::cyan(), &bitmap_icon_utilities, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<UtilitiesMenuView>(nav); }},
     //{nullptr, "Games", HOME, Color::cyan(), &bitmap_icon_games, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<GamesMenuView>(nav); }},
     {nullptr, "Settings", HOME, Color::cyan(), &bitmap_icon_setup, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<SettingsMenuView>(nav); }},
+    {nullptr, "R433", HOME, Color::cyan(), &bitmap_icon_r433, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<SettingsMenuView>(nav); }},
 
     /* RX ********************************************************************/
     {"adsbrx", "ADS-B", RX, Color::green(), &bitmap_icon_adsb, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<ADSBRxView>(nav); }},
