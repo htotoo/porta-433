@@ -657,33 +657,6 @@ static void cmd_appstart(BaseSequentialStream* chp, int argc, char* argv[]) {
     chprintf(chp, "ok\r\n");
 }
 
-static void printAppInfo(BaseSequentialStream* chp, ui::AppInfoConsole& element) {
-    if (strlen(element.appCallName) == 0) return;
-    chprintf(chp, element.appCallName);
-    chprintf(chp, " ");
-    chprintf(chp, element.appFriendlyName);
-    chprintf(chp, " ");
-    switch (element.appLocation) {
-        case RX:
-            chprintf(chp, "[RX]\r\n");
-            break;
-        case TX:
-            chprintf(chp, "[TX]\r\n");
-            break;
-        case TRX:
-            chprintf(chp, "[TRX]\r\n");
-            break;
-        case UTILITIES:
-            chprintf(chp, "[UTIL]\r\n");
-            break;
-        case DEBUG:
-            chprintf(chp, "[DEBUG]\r\n");
-            break;
-        default:
-            break;
-    }
-}
-
 static void printAppInfo(BaseSequentialStream* chp, const ui::AppInfo& element) {
     if (element.id == nullptr) return;
     if (strlen(element.id) == 0) return;
