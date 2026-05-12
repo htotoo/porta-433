@@ -40,32 +40,24 @@
 #include "ui_flash_utility.hpp"
 #include "ui_font_fixed_8x16.hpp"
 #include "ui_freqman.hpp"
-#include "ui_iq_trim.hpp"
 #include "ui_looking_glass_app.hpp"
 #include "ui_mictx.hpp"
 
 #include "ui_playlist.hpp"
-#include "ui_rds.hpp"
 #include "ui_recon.hpp"
 #include "ui_search.hpp"
 #include "ui_settings.hpp"
-#include "ui_sonde.hpp"
 #include "ui_ss_viewer.hpp"
 // #include "ui_test.hpp"
 #include "ui_sd_over_usb.hpp"
 #include "ui_text_editor.hpp"
 #include "ui_touchtunes.hpp"
 #include "ui_weatherstation.hpp"
-#include "ui_subghzd.hpp"
 #include "ui_battinfo.hpp"
-#include "ui_external_items_menu_loader.hpp"
 
 #include "ais_app.hpp"
 #include "analog_audio_app.hpp"
-#include "ble_rx_app.hpp"
-#include "ble_tx_app.hpp"
 #include "capture_app.hpp"
-#include "pocsag_app.hpp"
 
 #include "core_control.hpp"
 #include "file.hpp"
@@ -725,25 +717,6 @@ void NavigationView::handle_autostart() {
         }
 
         if (!started) {
-            // ppma
-
-            std::string appwithpath = "/" + apps_dir.string() + "/" + autostart_app + ".ppma";
-            std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> conv;
-            std::filesystem::path pth = conv.from_bytes(appwithpath.c_str());
-            if (ui::ExternalItemsMenuLoader::run_external_app(*this, pth)) {
-                started = true;
-            }
-
-            if (!started) {
-                // ppmp / standalone
-                appwithpath = "/" + apps_dir.string() + "/" + autostart_app + ".ppmp";
-                pth = conv.from_bytes(appwithpath.c_str());
-                if (ui::ExternalItemsMenuLoader::run_standalone_app(*this, pth)) {
-                    started = true;
-                }
-            }
-        }
-        if (!started) {
             display_modal(
                 "Notice", "Autostart failed:\n" +
                               autostart_app +
@@ -780,39 +753,6 @@ void add_apps(NavigationView& nav, BtnGridView& grid, app_location_t loc) {
     };
 }
 
-// clang-format off
-void add_external_items(NavigationView& nav, app_location_t location, BtnGridView& grid, uint8_t error_tile_pos, bool show_error_tile ) {
-    auto externalItems = ExternalItemsMenuLoader::load_external_items(location, nav);
-    if (externalItems.empty() && show_error_tile) {
-        grid.insert_item({"ExtAppErr",
-                          Theme::getInstance()->error_dark->foreground,
-                          nullptr,
-                          [&nav]() {
-                              nav.display_modal(
-                                  "Notice",
-                                  "Can't read external apps\n"
-                                  "Check SD card\n"
-                                  "Update SD card content\n");
-                          }},
-                         error_tile_pos, true);
-    } else {
-        std::sort(externalItems.begin(), externalItems.end(), [](const auto &a, const auto &b)
-        {
-            return a.desired_position < b.desired_position;
-        });
-
-        for (auto & gridItem : externalItems) {
-            if (gridItem.desired_position < 0) {
-                grid.add_item(std::move(gridItem), true);
-            } else {
-                grid.insert_item(std::move(gridItem), gridItem.desired_position, true);
-            }
-
-        }
-    }
-}
-// clang-format on
-
 /* ReceiversMenuView *****************************************************/
 
 ReceiversMenuView::ReceiversMenuView(NavigationView& nav)
@@ -825,7 +765,6 @@ void ReceiversMenuView::on_populate() {
                  true);
     }
     add_apps(nav_, *this, RX);
-    add_external_items(nav_, app_location_t::RX, *this, return_icon ? 1 : 0);
 }
 
 /* TransmittersMenuView **************************************************/
@@ -839,7 +778,6 @@ void TransmittersMenuView::on_populate() {
         add_items({{"..", Theme::getInstance()->fg_light->foreground, &bitmap_icon_previous, [this]() { nav_.pop(); }}});
     }
     add_apps(nav_, *this, TX);
-    add_external_items(nav_, app_location_t::TX, *this, return_icon ? 1 : 0);
 }
 
 /* TransceiversMenuView **************************************************/
@@ -853,7 +791,6 @@ void TransceiversMenuView::on_populate() {
         add_items({{"..", Theme::getInstance()->fg_light->foreground, &bitmap_icon_previous, [this]() { nav_.pop(); }}});
     }
     add_apps(nav_, *this, TRX);
-    add_external_items(nav_, app_location_t::TRX, *this, return_icon ? 1 : 0, false);  // this folder doesn't have external apps, so don't show error for it.
     // NB: when has external app someday, uncomment this.
 }
 
@@ -870,7 +807,6 @@ void UtilitiesMenuView::on_populate() {
         add_items({{"..", Theme::getInstance()->fg_light->foreground, &bitmap_icon_previous, [this]() { nav_.pop(); }}});
     }
     add_apps(nav_, *this, UTILITIES);
-    add_external_items(nav_, app_location_t::UTILITIES, *this, return_icon ? 1 : 0);
 }
 
 /* GamesMenuView ********************************************************/
@@ -886,7 +822,6 @@ void GamesMenuView::on_populate() {
         add_item({"..", Theme::getInstance()->fg_light->foreground, &bitmap_icon_previous, [this]() { nav_.pop(); }});
     }
     add_apps(nav_, *this, GAMES);
-    add_external_items(nav_, app_location_t::GAMES, *this, return_icon ? 1 : 0);
 }
 
 /* SystemMenuView ********************************************************/
@@ -912,7 +847,6 @@ SystemMenuView::SystemMenuView(NavigationView& nav)
 
 void SystemMenuView::on_populate() {
     add_apps(nav_, *this, HOME);
-    add_external_items(nav_, app_location_t::HOME, *this, 0);
     add_item({"HackRF", Theme::getInstance()->fg_cyan->foreground, &bitmap_icon_hackrf, [this]() { hackrf_mode(nav_); }});
 }
 

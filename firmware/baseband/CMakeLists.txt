@@ -329,34 +329,6 @@ set(MODE_CPPSRC
 DeclareTargets(PADR adsbrx)
 
 
-### AFSK TX
-
-set(MODE_CPPSRC
-	proc_afsk.cpp
-)
-DeclareTargets(PAFT afsktx)
-
-### APRS RX
-
-set(MODE_CPPSRC
-	proc_aprsrx.cpp
-)
-DeclareTargets(PAPR aprsrx)
-
-
-### BTLE RX
-
-set(MODE_CPPSRC
-	proc_btlerx.cpp
-)
-DeclareTargets(PBTR btlerx)
-
-### BTLE TX
-
-set(MODE_CPPSRC
-	proc_ble_tx.cpp
-)
-DeclareTargets(PBTT btletx)
 
 ### AIS
 
@@ -380,27 +352,6 @@ set(MODE_CPPSRC
 )
 DeclareTargets(PCAP capture)
 
-### Radiosonde
-
-set(MODE_CPPSRC
-	proc_sonde.cpp
-)
-DeclareTargets(PSON sonde)
-
-### FSK RX
-
-set(MODE_CPPSRC
-	proc_fsk_rx.cpp
-)
-DeclareTargets(PFSR fskrx)
-
-### FSK TX
-
-set(MODE_CPPSRC
-	proc_fsk.cpp
-)
-DeclareTargets(PFSK fsktx)
-
 ### Microphone transmit
 
 set(MODE_CPPSRC
@@ -415,27 +366,6 @@ set(MODE_CPPSRC
 )
 DeclareTargets(PNFM nfm_audio)
 
-### OOK
-
-set(MODE_CPPSRC
-	proc_ook.cpp
-)
-DeclareTargets(POOK ook)
-
-
-### POCSAG2 RX
-
-set(MODE_CPPSRC
-	proc_pocsag2.cpp
-)
-DeclareTargets(PPO2 pocsag2)
-
-### RDS
-
-set(MODE_CPPSRC
-	proc_rds.cpp
-)
-DeclareTargets(PRDS rds)
 
 ### Replay
 
@@ -461,19 +391,6 @@ set(MODE_CPPSRC
 )
 DeclareTargets(PWFM wfm_audio)
 
-### SubGhz Decoders
-
-set(MODE_CPPSRC
-	proc_subghzd.cpp
-)
-DeclareTargets(PSGD subghzd)
-
-
-### Weather Stations
-set(MODE_CPPSRC
-	proc_weather.cpp
-)
-DeclareTargets(PWTH weather)
 
 set(MODE_FLAGS "-Os")
 

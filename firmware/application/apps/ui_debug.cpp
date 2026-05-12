@@ -36,7 +36,6 @@
 #include "ui_sd_card_debug.hpp"
 #include "ui_font_fixed_8x16.hpp"
 #include "ui_painter.hpp"
-#include "ui_external_items_menu_loader.hpp"
 #include "ui_debug_max17055.hpp"
 #include "ui_external_module_view.hpp"
 
@@ -3536,10 +3535,6 @@ void DebugMenuView::on_populate() {
         add_item(
             {"Battery", ui::Theme::getInstance()->fg_darkcyan->foreground, &bitmap_icon_batt_icon, [this]() { nav_.push<BatteryCapacityView>(); }});
     }
-
-    for (auto const& gridItem : ExternalItemsMenuLoader::load_external_items(app_location_t::DEBUG, nav_)) {
-        add_item(gridItem);
-    };
 }
 
 /* DebugMemoryDumpView *********************************************************/

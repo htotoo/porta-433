@@ -32,7 +32,6 @@
 #include "ui_receiver.hpp"
 #include "ui_touch_calibration.hpp"
 #include "ui_text_editor.hpp"
-#include "ui_external_items_menu_loader.hpp"
 #include "ui_ss_viewer.hpp"
 #include "ui_fileman.hpp"
 #include "ui_sd_card_debug.hpp"
@@ -1295,8 +1294,6 @@ void SettingsMenuView::on_populate() {
     });
 
     if (battery::BatteryManagement::isDetected()) add_item({"Battery", ui::Color::dark_cyan(), &bitmap_icon_batt_icon, [this]() { nav_.push<SetBatteryView>(); }});
-
-    add_external_items(nav_, app_location_t::SETTINGS, *this, return_icon ? 1 : 0);
 }
 
 } /* namespace ui */

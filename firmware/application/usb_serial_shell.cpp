@@ -41,7 +41,6 @@
 #include "i2c_device_to_host.h"
 #include "chprintf.h"
 #include "chqueues.h"
-#include "ui_external_items_menu_loader.hpp"
 #include "ui_flash_utility.hpp"
 #include "untar.hpp"
 #include "ui_widget.hpp"
@@ -105,23 +104,14 @@ static void cmd_sd_over_usb(BaseSequentialStream* chp, int argc, char* argv[]) {
     (void)chp;
     (void)argc;
     (void)argv;
-    auto evtd = getEventDispatcherInstance();
-    if (!evtd) return;
-    auto top_widget = evtd->getTopWidget();
-    if (!top_widget) return;
-    auto nav = static_cast<ui::SystemView*>(top_widget)->get_navigation_view();
-    if (!nav) return;
-    nav->home(false);
-    std::string appwithpath = "/" + apps_dir.string() + "/";
-    appwithpath += "sdusb.ppma";
-    bool ret = ui::ExternalItemsMenuLoader::run_external_app(*nav, path_from_string8((char*)appwithpath.c_str()));
-    if (ret) {
-        chprintf(chp, "ok\r\n");
-    } else {
-        chprintf(chp, "Failed to start SD over USB\r\n");
-    }
-    evtd->wait_finish_frame();
-    evtd->emulateKeyboard('\n');
+    sdcDisconnect(&SDCD1);
+    sdcStop(&SDCD1);
+
+    m4_request_shutdown();
+    chThdSleepMilliseconds(50);
+    portapack::shutdown(true);
+    m4_init(portapack::spi_flash::image_tag_usb_sd, portapack::memory::map::m4_code, false);
+    m0_halt();
 }
 
 bool strEndsWith(const std::u16string& str, const std::u16string& suffix) {
@@ -664,15 +654,6 @@ static void cmd_appstart(BaseSequentialStream* chp, int argc, char* argv[]) {
         chprintf(chp, "ok\r\n");
         return;
     }
-    // since ext app loader changed, we can just pass the string to it, and it"ll return if started or not.
-    std::string appwithpath = "/" + apps_dir.string() + "/";
-    appwithpath += argv[0];
-    appwithpath += ".ppma";
-    bool ret = ui::ExternalItemsMenuLoader::run_external_app(*nav, path_from_string8((char*)appwithpath.c_str()));
-    if (!ret) {
-        chprintf(chp, "error\r\n");
-        return;
-    }
     chprintf(chp, "ok\r\n");
 }
 
@@ -745,9 +726,6 @@ static void cmd_applist(BaseSequentialStream* chp, int argc, char* argv[]) {
     for (auto& element : ui::NavigationView::appList) {
         printAppInfo(chp, element);
     }
-    ui::ExternalItemsMenuLoader::load_all_external_items_callback([chp](ui::AppInfoConsole& info) {
-        printAppInfo(chp, info);
-    });
     chprintf(chp, "ok\r\n");
 }
 

@@ -176,15 +176,6 @@ baseband_image = read_image(sys.argv[2])
 output_path = sys.argv[3]
 spi_size = int(sys.argv[4], 0)
 
-print("\ncheck gcc versions from all elf target\n")
-application_gcc_versions = get_gcc_version_from_elf_files_in_giving_path_or_filename_s_path(sys.argv[1])
-baseband_gcc_versions = get_gcc_version_from_elf_files_in_giving_path_or_filename_s_path(sys.argv[2])
-
-for itap in application_gcc_versions:
-    print(itap)
-
-for itbb in baseband_gcc_versions:
-    print(itbb)
 
 print("\n")
 
@@ -192,19 +183,6 @@ print("\n")
 
 ld_file_path = Path("..") / ".." / "firmware" / "application" / "external" / "external.ld"
 
-try:
-    regions = parse_memory_regions(ld_file_path)
-    
-    if not regions:
-        print("some issue causing that we can't see external app's linker script's address list, pass")
-    
-    if validate_memory_regions(regions):
-        print("external app addr seems correct, pass")
-    else:
-        print("\nWARNING: It seems you are having incorrect external app addresses.")
-    
-except Exception as e:
-    print(f"err: {e}")
 
 #^^^^^^^^external app linker script address check worker^^^^^^^^
 
@@ -250,10 +228,7 @@ for i in range(0, len(spi_image), 4):
     snippet = spi_image[i:i + 4]
     val = int.from_bytes(snippet, byteorder='little')
     checksum += val
-    if (val >= external_apps_address_start) and (val < external_apps_address_end) and (
-            (val & 0xFFFF) < maximum_application_size):
-        print("WARNING: Possible external code address", hex(val), "at offset", hex(i), "in", sys.argv[3])
-
+ 
 final_checksum = 0
 checksum = (final_checksum - checksum) & 0xFFFFFFFF
 

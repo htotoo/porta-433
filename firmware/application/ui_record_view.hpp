@@ -22,7 +22,6 @@
 #ifndef __UI_RECORD_VIEW_H__
 #define __UI_RECORD_VIEW_H__
 
-#include "ui_iq_trim.hpp"
 #include "ui_widget.hpp"
 
 #include "bitmap.hpp"
@@ -110,7 +109,6 @@ class RecordView : public View {
 
     bool auto_trim = false;
     std::filesystem::path trim_path{};
-    TrimProgressUI trim_ui{};
 
     Rectangle rect_background{
         Theme::getInstance()->bg_darkest->background};

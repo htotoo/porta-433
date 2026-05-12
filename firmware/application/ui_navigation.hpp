@@ -49,7 +49,6 @@
 #include "diskio.h"
 #include "lfsr_random.hpp"
 #include "sd_card.hpp"
-#include "external_app.hpp"
 #include "battery.hpp"
 
 // for incrementing fake date when RTC battery is dead
@@ -59,11 +58,20 @@ using namespace sd_card;
 
 namespace ui {
 
+enum app_location_t : uint32_t {
+    UTILITIES = 0,
+    RX,
+    TX,
+    DEBUG,
+    HOME,
+    SETTINGS,
+    GAMES,
+    TRX
+};
 class NavigationView;
 using ViewProducer = std::unique_ptr<View> (*)(NavigationView&);
 
 void add_apps(NavigationView& nav, BtnGridView& grid, app_location_t loc);
-void add_external_items(NavigationView& nav, app_location_t location, BtnGridView& grid, uint8_t error_tile_pos, bool show_error_tile = true);
 
 enum modal_t {
     INFO = 0,

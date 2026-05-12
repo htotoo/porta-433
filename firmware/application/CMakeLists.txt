@@ -208,16 +208,11 @@ set(CPPSRC
 	io_convert.cpp
 	io_file.cpp
 	io_wave.cpp
-	iq_trim.cpp
 	irq_controls.cpp
 	irq_lcd_frame.cpp
 	irq_rtc.cpp
-    keeloq_common.cpp
-	keeloq_file.cpp
-	keeloq_keystore.cpp
 	log_file.cpp
 	metadata_file.cpp
-	flipper_subfile.cpp
 	portapack.cpp
 	usb_serial_shell.cpp
 	usb_serial_shell_filesystem.cpp
@@ -280,17 +275,13 @@ set(CPPSRC
 	ui/ui_bmpview.cpp
 	apps/ais_app.cpp
 	apps/analog_audio_app.cpp
-	apps/ble_rx_app.cpp
-	apps/ble_tx_app.cpp
 	apps/capture_app.cpp
-	apps/pocsag_app.cpp
 	apps/ui_about_simple.cpp
 	apps/ui_adsb_rx.cpp
 	apps/ui_aprs_rx.cpp
 	apps/ui_aprs_tx.cpp
 	apps/ui_battinfo.cpp
 	apps/ui_bmp_file_viewer.cpp
-	apps/ui_btle_rx.cpp
 	apps/ui_debug.cpp
 	apps/ui_debug_max17055.cpp
 	apps/ui_dfu_menu.cpp
@@ -299,26 +290,18 @@ set(CPPSRC
 	apps/ui_fileman.cpp
 	apps/ui_flash_utility.cpp
 	apps/ui_freqman.cpp
-	apps/ui_iq_trim.cpp
 	apps/ui_looking_glass_app.cpp
-	apps/ui_mictx.cpp
 	apps/ui_modemsetup.cpp
 	apps/ui_playlist.cpp
-	apps/ui_rds.cpp
 	apps/ui_recon_settings.cpp
 	apps/ui_recon.cpp
 	apps/ui_sd_over_usb.cpp
 	apps/ui_search.cpp
 	apps/ui_settings.cpp
-	apps/ui_sonde.cpp
 	apps/ui_ss_viewer.cpp
-	apps/ui_standalone_view.cpp
-	apps/ui_subghzd.cpp
-	# apps/ui_test.cpp
 	apps/ui_text_editor.cpp
 	apps/ui_touch_calibration.cpp
 	apps/ui_touchtunes.cpp
-	apps/ui_weatherstation.cpp
 	protocols/aprs.cpp
 	protocols/ax25.cpp
 	protocols/dcs.cpp
@@ -331,7 +314,6 @@ set(CPPSRC
 	${CPLD_20170522_DATA_CPP}
 	${CPLD_H4M_DATA_CPP}
 	${HACKRF_CPLD_DATA_CPP}
-	ui_external_items_menu_loader.cpp
 )
 
 set_source_files_properties(${CPPSRC} PROPERTIES COMPILE_FLAGS -flto) # Add lto flag to the non-external sources only

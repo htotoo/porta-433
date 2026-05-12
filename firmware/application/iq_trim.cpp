@@ -228,7 +228,7 @@ bool trim_capture_with_range(
             break;
 
         if (processed >= next_report) {
-            on_progress(100 * processed / length);
+            if (on_progress) on_progress(100 * processed / length);
             next_report += report_interval;
         }
     }

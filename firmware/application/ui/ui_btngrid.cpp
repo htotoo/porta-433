@@ -28,7 +28,6 @@
 #include "rtc_time.hpp"
 #include "sd_card.hpp"
 #include <algorithm>
-#include "ui_external_items_menu_loader.hpp"
 
 namespace ui {
 
@@ -61,7 +60,6 @@ BtnGridView::BtnGridView(
 }
 
 BtnGridView::~BtnGridView() {
-    ExternalItemsMenuLoader::unload_external_items();
 }
 
 void BtnGridView::set_max_rows(int rows) {

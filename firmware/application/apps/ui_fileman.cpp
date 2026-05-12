@@ -30,7 +30,6 @@
 #include "ui_ss_viewer.hpp"
 #include "ui_bmp_file_viewer.hpp"
 #include "ui_text_editor.hpp"
-#include "ui_iq_trim.hpp"
 #include "string_format.hpp"
 #include "portapack.hpp"
 #include "event_m0.hpp"
@@ -850,11 +849,7 @@ FileManagerView::FileManagerView(
     };
 
     button_open_iq_trim.on_select = [this]() {
-        auto path = get_selected_full_path();
-        if (selected_is_valid() && !get_selected_entry().is_directory && is_cxx_capture_file(path)) {
-            nav_.push<IQTrimView>(path);
-        } else
-            nav_.display_modal("IQ Trim", "Not a capture file.");
+
     };
 
     button_show_hidden_files.on_select = [this]() {

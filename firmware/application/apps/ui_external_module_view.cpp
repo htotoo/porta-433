@@ -21,7 +21,6 @@
 
 #include "ui_external_module_view.hpp"
 #include "portapack.hpp"
-#include "ui_standalone_view.hpp"
 
 #include "i2cdevmanager.hpp"
 

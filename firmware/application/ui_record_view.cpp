@@ -327,31 +327,7 @@ void RecordView::update_status_display() {
 }
 
 void RecordView::trim_capture() {
-    using bucket_t = iq::PowerBuckets::Bucket;
-
-    if (file_type != FileType::WAV && auto_trim && !trim_path.empty()) {
-        // Need to heap alloc the buckets in this case. The large static buffer overflows the stack.
-        std::vector<bucket_t> buckets(size_t(255), bucket_t{});
-        ;
-        iq::PowerBuckets power_buckets{
-            .p = &buckets[0],
-            .size = buckets.size()};
-
-        trim_ui.show_reading();
-        auto info = iq::profile_capture(trim_path, power_buckets);
-
-        if (info) {
-            // 7% - decent trimming without being too aggressive.
-            auto trim_range = iq::compute_trim_range(*info, power_buckets, 7);
-
-            trim_ui.show_trimming();
-            iq::trim_capture_with_range(trim_path, trim_range, trim_ui.get_callback(), 1);
-        }
-
-        trim_ui.clear();
-    }
-
-    trim_path = "";
+       trim_path = "";
 }
 
 void RecordView::on_gps(const GPSPosDataMessage* msg) {
