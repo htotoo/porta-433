@@ -23,7 +23,6 @@
 #include "irq_controls.hpp"
 
 #include "i2cdevmanager.hpp"
-#include "i2cdev_ppmod.hpp"
 
 #include "ui_font_fixed_5x8.hpp"
 #include "ui_font_fixed_8x16.hpp"
@@ -85,15 +84,7 @@ ui::Coord scroll(const int32_t delta) {
 }
 
 bool i2c_read(uint8_t* cmd, size_t cmd_len, uint8_t* data, size_t data_len) {
-    auto dev = (i2cdev::I2cDev_PPmod*)i2cdev::I2CDevManager::get_dev_by_model(I2C_DEVMDL::I2CDECMDL_PPMOD);
-    if (!dev) {
-        return false;
-    }
-
-    if (data_len == 0 || data == nullptr)
-        return dev->i2c_write(nullptr, 0, cmd, cmd_len);
-
-    return dev->i2c_read(cmd, cmd_len, data, data_len);
+    return false;
 }
 
 // v3

@@ -45,7 +45,6 @@ using namespace hackrf::one;
 #include "i2c_lld.h"
 
 #include "i2cdevmanager.hpp"
-#include "i2cdev_ppmod.hpp"
 
 #include "lpc43xx.inc"
 #include "nvic.h"
@@ -161,10 +160,7 @@ void EventDispatcher::charge_deep_sleep(const bool sleep) {
     };
 
     if (sleep) {
-        auto dev = (i2cdev::I2cDev_PPmod*)i2cdev::I2CDevManager::get_dev_by_model(I2C_DEVMDL::I2CDECMDL_PPMOD);
-        if (dev) dev->send_poweroff_command();
-
-        rffc507x::spi::SPI().power_down();
+              rffc507x::spi::SPI().power_down();
         portapack::shutdown(false, true);
 
         // Unmount SD card and stop driver

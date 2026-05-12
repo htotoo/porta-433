@@ -5,7 +5,6 @@
 #include "ui_standalone_view.hpp"
 
 #include "i2cdevmanager.hpp"
-#include "i2cdev_ppmod.hpp"
 
 namespace ui {
 
@@ -21,27 +20,6 @@ void ExternalItemsMenuLoader::unload_external_items() {
 // please keep in sync with load_external_items
 /* static */ void ExternalItemsMenuLoader::load_all_external_items_callback(std::function<void(AppInfoConsole&)> callback, bool module_included) {
     if (!callback) return;
-
-    auto dev = (i2cdev::I2cDev_PPmod*)i2cdev::I2CDevManager::get_dev_by_model(I2C_DEVMDL::I2CDECMDL_PPMOD);
-
-    if (dev && module_included) {
-        auto device_info = dev->readDeviceInfo();
-
-        if (device_info.has_value()) {
-            for (uint32_t i = 0; i < device_info->application_count; i++) {
-                auto appInfo = dev->getStandaloneAppInfo(i);
-                if (appInfo.has_value() == false) {
-                    continue;
-                }
-
-                if (appInfo->header_version > CURRENT_STANDALONE_APPLICATION_API_VERSION)
-                    continue;
-
-                AppInfoConsole appInfoConsole = {reinterpret_cast<char*>(&appInfo->app_name[0]), reinterpret_cast<char*>(&appInfo->app_name[0]), appInfo->menu_location};
-                callback(appInfoConsole);
-            }
-        }
-    }
 
     if (sd_card::status() != sd_card::Status::Mounted)
         return;
@@ -108,77 +86,6 @@ std::vector<ExternalItemsMenuLoader::GridItemEx> ExternalItemsMenuLoader::load_e
     bitmaps.shrink_to_fit();
 
     std::vector<GridItemEx> external_apps;
-
-    auto dev = (i2cdev::I2cDev_PPmod*)i2cdev::I2CDevManager::get_dev_by_model(I2C_DEVMDL::I2CDECMDL_PPMOD);
-
-    if (dev) {
-        auto device_info = dev->readDeviceInfo();
-
-        if (device_info.has_value()) {
-            for (uint32_t i = 0; i < device_info->application_count; i++) {
-                auto appInfo = dev->getStandaloneAppInfo(i);
-                if (appInfo.has_value() == false) {
-                    continue;
-                }
-
-                if (appInfo->menu_location != app_location) {
-                    continue;
-                }
-
-                if (appInfo->header_version > CURRENT_STANDALONE_APPLICATION_API_VERSION)
-                    continue;
-
-                GridItemEx gridItem = {};
-                gridItem.text = reinterpret_cast<char*>(&appInfo->app_name[0]);
-
-                gridItem.color = Color((uint16_t)appInfo->icon_color);
-
-                auto dyn_bmp = std::make_unique<DynamicBitmap<16, 16>>(appInfo->bitmap_data);
-                gridItem.bitmap = dyn_bmp->bitmap();
-                bitmaps.push_back(std::move(dyn_bmp));
-
-                gridItem.on_select = [&nav, appInfo, i]() {
-                    auto dev2 = (i2cdev::I2cDev_PPmod*)i2cdev::I2CDevManager::get_dev_by_model(I2C_DEVMDL::I2CDECMDL_PPMOD);
-                    if (dev2) {
-                        dev2->lockDevice();
-                        // auto app_image = reinterpret_cast<uint8_t*>(portapack::memory::map::m4_code.end() - appInfo->binary_size);
-                        auto app_image = reinterpret_cast<uint8_t*>(portapack::memory::map::local_sram_0.base());
-                        uint8_t errorcnt = 0;
-                        for (size_t j = 0; j < appInfo->binary_size; j += 128) {
-                            errorcnt = 0;
-                            do {
-                                auto segment = dev2->downloadStandaloneApp(i, j);
-                                if (segment.size() != 128) {
-                                    errorcnt++;
-                                    if (errorcnt > 5) {
-                                        break;
-                                    }
-                                } else {
-                                    std::copy(segment.begin(), segment.end(), app_image + j);
-                                    break;
-                                }
-                            } while (1);  // when ok, break. when errorcnt > 5, break
-                            if (errorcnt > 5) {
-                                nav.display_modal("Error", "Unable to download app.");
-                                dev2->unlockDevice();
-                                return;
-                            }
-                        }
-
-                        if (!run_module_app(nav, app_image, appInfo->binary_size)) {
-                            nav.display_modal("Error", "Unable to run downloaded app.");
-                        }
-                        dev2->unlockDevice();
-                    } else
-                        nav.display_modal("Error", "Unable to download app.");
-                };
-
-                gridItem.desired_position = -1;  // TODO: Where should we put the module's app icon? First? Last? Also configurable?
-
-                external_apps.push_back(gridItem);
-            }
-        }
-    }
 
     if (sd_card::status() != sd_card::Status::Mounted)
         return external_apps;

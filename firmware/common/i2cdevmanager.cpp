@@ -26,13 +26,9 @@
     Include your devices headers here:
 */
 
-#include "i2cdev_bmx280.hpp"
-#include "i2cdev_sht3x.hpp"
 #include "i2cdev_max17055.hpp"
 #include "i2cdev_ads1110.hpp"
 #include "i2cdev_bh1750.hpp"
-#include "i2cdev_ppmod.hpp"
-#include "i2cdev_sht4x.hpp"
 
 namespace i2cdev {
 
@@ -64,21 +60,6 @@ bool I2CDevManager::found(uint8_t addr) {
         Put your driver's init code here. ALLWAYS check the !item.dev, if any other driver already took it. Also check the addr if it suits your module. (also need additional checks in the init() code)
     */
 
-    if (!item.dev && (addr == I2CDEV_BMX280_ADDR_1 || addr == I2CDEV_BMX280_ADDR_2)) {  // check if device is already taken, and i can handle the address
-        item.dev = std::make_unique<I2cDev_BMX280>();
-        if (!item.dev->init(addr)) item.dev = nullptr;  // if not inited, reset it's instance, and let other handlers try
-    }
-
-    if (!item.dev && (addr == I2CDEV_SHT3X_ADDR_1 || addr == I2CDEV_SHT3X_ADDR_2)) {
-        item.dev = std::make_unique<I2cDev_SHT3x>();
-        if (!item.dev->init(addr)) item.dev = nullptr;
-    }
-
-    if (!item.dev && (addr == I2CDEV_SHT4X_ADDR_1 || addr == I2CDEV_SHT4X_ADDR_2)) {
-        item.dev = std::make_unique<I2cDev_SHT4x>();
-        if (!item.dev->init(addr)) item.dev = nullptr;
-    }
-
     if (!item.dev && (addr == I2CDEV_MAX17055_ADDR_1)) {
         item.dev = std::make_unique<I2cDev_MAX17055>();
         if (!item.dev->init(addr)) item.dev = nullptr;
@@ -91,11 +72,6 @@ bool I2CDevManager::found(uint8_t addr) {
 
     if (!item.dev && (addr == I2CDEV_BH1750_ADDR_1)) {
         item.dev = std::make_unique<I2cDev_BH1750>();
-        if (!item.dev->init(addr)) item.dev = nullptr;
-    }
-
-    if (!item.dev && (addr == I2CDEV_PPMOD_ADDR_1)) {
-        item.dev = std::make_unique<I2cDev_PPmod>();
         if (!item.dev->init(addr)) item.dev = nullptr;
     }
 

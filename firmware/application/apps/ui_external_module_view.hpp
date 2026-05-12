@@ -37,7 +37,6 @@
 #include <utility>
 
 #include "i2cdevmanager.hpp"
-#include "i2cdev_ppmod.hpp"
 
 namespace ui {
 
