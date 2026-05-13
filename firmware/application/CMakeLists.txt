@@ -173,6 +173,12 @@ set_source_files_properties(
 )
 
 set_source_files_properties(
+	${RTL433_CORE_CSRC}
+	${RTL433_DEVICE_CSRC}
+	PROPERTIES COMPILE_OPTIONS "-O3"
+)
+
+set_source_files_properties(
 	rtl433_data_shim.c
 	PROPERTIES COMPILE_DEFINITIONS ""
 )
@@ -361,6 +367,7 @@ set(CPPSRC
 )
 
 set_source_files_properties(${CPPSRC} PROPERTIES COMPILE_FLAGS -flto) # Add lto flag to the non-external sources only
+set_source_files_properties(apps/ui_rtl433.cpp PROPERTIES COMPILE_OPTIONS "-O3")
 
 # C sources to be compiled in ARM mode regardless of the global setting.
 # NOTE: Mixing ARM and THUMB mode enables the -mthumb-interwork compiler

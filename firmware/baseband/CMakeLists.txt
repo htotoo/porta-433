@@ -397,6 +397,7 @@ DeclareTargets(PWFM wfm_audio)
 set(MODE_CPPSRC
 	proc_rtl433.cpp
 )
+set_source_files_properties(proc_rtl433.cpp PROPERTIES COMPILE_OPTIONS "-O3")
 DeclareTargets(PRTL rtl433)
 
 

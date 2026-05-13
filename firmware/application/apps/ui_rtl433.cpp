@@ -303,10 +303,6 @@ class RTL433View::ParserBridge {
             dev.output_fn = &ParserBridge::output_handler;
             dev.output_ctx = this;
             dev.log_fn = &ParserBridge::log_handler;
-            dev.decode_events = 0;
-            dev.decode_ok = 0;
-            dev.decode_messages = 0;
-            std::memset(dev.decode_fails, 0, sizeof(dev.decode_fails));
 
             switch (ref.slicer) {
                 case SlicerKind::PCM:
@@ -341,23 +337,13 @@ class RTL433View::ParserBridge {
             }
         }
 
-        int events = 0;
-        unsigned current_priority = devices[0].tmpl->priority;
         for (size_t idx = 0; idx < device_count; ++idx) {
             if (last_hit >= 0 && idx == static_cast<size_t>(last_hit)) {
                 continue;
             }
 
             const DecoderRef& ref = devices[idx];
-            const unsigned dev_priority = ref.tmpl->priority;
-            if (dev_priority != current_priority) {
-                if (events > 0) {
-                    break;
-                }
-                current_priority = dev_priority;
-            }
-
-            events = run_one(ref);
+            const int events = run_one(ref);
             if (events > 0) {
                 last_hit = static_cast<int16_t>(idx);
                 return events;
@@ -365,7 +351,7 @@ class RTL433View::ParserBridge {
         }
 
         last_hit = -1;
-        return events;
+        return 0;
     }
 };
 
@@ -373,7 +359,7 @@ RTL433View::RTL433View(NavigationView& nav)
     : nav_{nav},
       parser_bridge_{std::make_unique<ParserBridge>()} {
     add_children({&rssi,
-                  &channel,
+                  //&channel,
                   &field_rf_amp,
                   &field_lna,
                   &field_vga,
@@ -389,7 +375,6 @@ RTL433View::RTL433View(NavigationView& nav)
     options_modulation.on_change = [this](size_t, OptionsField::value_t v) {
         modulation_ = static_cast<uint8_t>(v);
         baseband::set_subghzd_config(modulation_, receiver_model.sampling_rate());
-        console.writeln(modulation_ ? "mode: FM/FSK" : "mode: AM/OOK");
     };
 
     field_frequency.set_step(10000);
@@ -414,7 +399,7 @@ void RTL433View::on_freqchg(int64_t freq) {
 }
 
 void RTL433View::on_packet(const RtlPulsePacketData* packet) {
-    if (packet == nullptr || packet->num_pulses == 0) {
+    if (packet == nullptr || packet->num_pulses == 0 || packet->num_pulses <= 8) {
         return;
     }
 

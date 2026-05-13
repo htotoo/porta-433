@@ -69,14 +69,14 @@ class RTL433View : public View {
     LNAGainField field_lna{{15 * 8, UI_POS_Y(0)}};
     VGAGainField field_vga{{18 * 8, UI_POS_Y(0)}};
     RSSI rssi{{21 * 8, 0, UI_POS_WIDTH_REMAINING(24), 4}};
-    Channel channel{{21 * 8, 5, UI_POS_WIDTH_REMAINING(24), 4}};
+    // Channel channel{{21 * 8, 5, UI_POS_WIDTH_REMAINING(24), 4}};
 
     RxFrequencyField field_frequency{
         {UI_POS_X(0), UI_POS_Y(0)},
         nav_};
 
     Button button_clear{
-        {0, 16, 7 * 8, 32},
+        {0, 16, 7 * 8, 16},
         "Clear"};
 
     OptionsField options_modulation{
@@ -84,7 +84,7 @@ class RTL433View : public View {
         3,
         {{"AM", 0}, {"FM", 1}}};
 
-    Console console{{0, 48, screen_width, screen_height - 48 - 16}};
+    Console console{{0, 32, screen_width, screen_height - 32 - 16}};
 
     std::unique_ptr<ParserBridge> parser_bridge_{};
 
