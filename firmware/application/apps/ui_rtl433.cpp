@@ -120,6 +120,8 @@ class RTL433View::ParserBridge {
     std::array<DecoderRef, kMaxDecoderRefs> devices_{};
     size_t ook_count_{0};
     size_t fm_count_{0};
+    int16_t last_ook_hit_{-1};
+    int16_t last_fm_hit_{-1};
     std::array<std::array<char, kMaxLineLen>, kMaxOutputLines> decoded_lines_{};
     size_t decoded_line_count_{0};
     pulse_data_t pulse_data_{};
@@ -295,18 +297,7 @@ class RTL433View::ParserBridge {
             return 0;
         }
 
-        int events = 0;
-        unsigned current_priority = devices[0].tmpl->priority;
-        for (size_t idx = 0; idx < device_count; ++idx) {
-            const DecoderRef& ref = devices[idx];
-            const unsigned dev_priority = ref.tmpl->priority;
-            if (dev_priority != current_priority) {
-                if (events > 0) {
-                    break;
-                }
-                current_priority = dev_priority;
-            }
-
+        auto run_one = [this, pulse_data](const DecoderRef& ref) -> int {
             r_device dev = *ref.tmpl;
             dev.protocol_num = ref.protocol_num;
             dev.output_fn = &ParserBridge::output_handler;
@@ -319,38 +310,61 @@ class RTL433View::ParserBridge {
 
             switch (ref.slicer) {
                 case SlicerKind::PCM:
-                    events += pulse_slicer_pcm(pulse_data, &dev);
-                    break;
+                    return pulse_slicer_pcm(pulse_data, &dev);
                 case SlicerKind::PWM:
-                    events += pulse_slicer_pwm(pulse_data, &dev);
-                    break;
+                    return pulse_slicer_pwm(pulse_data, &dev);
                 case SlicerKind::Manchester:
-                    events += pulse_slicer_manchester_zerobit(pulse_data, &dev);
-                    break;
+                    return pulse_slicer_manchester_zerobit(pulse_data, &dev);
                 case SlicerKind::PPM:
-                    events += pulse_slicer_ppm(pulse_data, &dev);
-                    break;
+                    return pulse_slicer_ppm(pulse_data, &dev);
                 case SlicerKind::PIWM_RAW:
-                    events += pulse_slicer_piwm_raw(pulse_data, &dev);
-                    break;
+                    return pulse_slicer_piwm_raw(pulse_data, &dev);
                 case SlicerKind::PIWM_DC:
-                    events += pulse_slicer_piwm_dc(pulse_data, &dev);
-                    break;
+                    return pulse_slicer_piwm_dc(pulse_data, &dev);
                 case SlicerKind::DMC:
-                    events += pulse_slicer_dmc(pulse_data, &dev);
-                    break;
+                    return pulse_slicer_dmc(pulse_data, &dev);
                 case SlicerKind::OSV1:
-                    events += pulse_slicer_osv1(pulse_data, &dev);
-                    break;
+                    return pulse_slicer_osv1(pulse_data, &dev);
                 case SlicerKind::NRZS:
-                    events += pulse_slicer_nrzs(pulse_data, &dev);
-                    break;
+                    return pulse_slicer_nrzs(pulse_data, &dev);
                 case SlicerKind::None:
                 default:
-                    break;
+                    return 0;
+            }
+        };
+
+        int16_t& last_hit = fm_mode ? last_fm_hit_ : last_ook_hit_;
+        if (last_hit >= 0 && static_cast<size_t>(last_hit) < device_count) {
+            int events = run_one(devices[static_cast<size_t>(last_hit)]);
+            if (events > 0) {
+                return events;
             }
         }
 
+        int events = 0;
+        unsigned current_priority = devices[0].tmpl->priority;
+        for (size_t idx = 0; idx < device_count; ++idx) {
+            if (last_hit >= 0 && idx == static_cast<size_t>(last_hit)) {
+                continue;
+            }
+
+            const DecoderRef& ref = devices[idx];
+            const unsigned dev_priority = ref.tmpl->priority;
+            if (dev_priority != current_priority) {
+                if (events > 0) {
+                    break;
+                }
+                current_priority = dev_priority;
+            }
+
+            events = run_one(ref);
+            if (events > 0) {
+                last_hit = static_cast<int16_t>(idx);
+                return events;
+            }
+        }
+
+        last_hit = -1;
         return events;
     }
 };
