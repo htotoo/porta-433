@@ -40,13 +40,6 @@ extern "C" {
 #include "r_device.h"
 #include "rtl_433_devices.h"
 
-#define DEVICES       \
-    DECL(lacrossetx)  \
-    DECL(acurite_th)  \
-    DECL(nexus)       \
-    DECL(acurite_txr) \
-    DECL(acurite_986)
-
 #define DECL(name) extern r_device name;
 DEVICES
 #undef DECL
@@ -104,7 +97,11 @@ class RTL433View::ParserBridge {
     static constexpr size_t kMaxFieldsPerCallback = 48;
     static constexpr size_t kMaxOutputLines = 24;
     static constexpr size_t kMaxLineLen = 96;
-    std::vector<r_device> devices_{};
+    struct DecoderRef {
+        const r_device* tmpl;
+        unsigned protocol_num;
+    };
+    std::vector<DecoderRef> devices_{};
     std::array<std::array<char, kMaxLineLen>, kMaxOutputLines> decoded_lines_{};
     size_t decoded_line_count_{0};
     pulse_data_t pulse_data_{};
@@ -180,30 +177,18 @@ class RTL433View::ParserBridge {
 
     void init_devices() {
 #define DECL(name) &name,
-        static r_device const* const available_devices[] = {DEVICES};
+        static const r_device* const available_devices[] = {DEVICES};
 #undef DECL
 
         devices_.reserve(sizeof(available_devices) / sizeof(available_devices[0]));
 
         for (size_t i = 0; i < (sizeof(available_devices) / sizeof(available_devices[0])); ++i) {
-            const r_device* src = available_devices[i];
-            if (!src || !src->decode_fn || !src->name) {
-                continue;
-            }
-            if (std::strcmp(src->name, "Template") == 0 || std::strcmp(src->name, "New Template") == 0 || std::strcmp(src->name, "Template decoder") == 0) {
+            const r_device* dev = available_devices[i];
+            if (!dev || !dev->decode_fn || !dev->name) {
                 continue;
             }
 
-            r_device device = *src;
-            device.protocol_num = static_cast<unsigned>(i + 1);
-            device.output_fn = &ParserBridge::output_handler;
-            device.output_ctx = this;
-            device.log_fn = &ParserBridge::log_handler;
-            device.decode_events = 0;
-            device.decode_ok = 0;
-            device.decode_messages = 0;
-            std::memset(device.decode_fails, 0, sizeof(device.decode_fails));
-            devices_.push_back(device);
+            devices_.push_back(DecoderRef{dev, static_cast<unsigned>(i + 1)});
         }
     }
 
@@ -211,63 +196,75 @@ class RTL433View::ParserBridge {
         int events = 0;
         unsigned next_priority = 0;
 
-        for (unsigned priority = 0; !events && priority < UINT_MAX; priority = next_priority) {
+        /* Keep rtl_433's original behavior: stop scanning priorities after first hit.
+         * This prevents long UI stalls when many decoders would otherwise continue to run. */
+        for (unsigned priority = 0; priority < UINT_MAX && events == 0; priority = next_priority) {
             next_priority = UINT_MAX;
 
-            for (auto& dev : devices_) {
-                if (dev.priority > priority && dev.priority < next_priority) {
-                    next_priority = dev.priority;
+            for (const auto& ref : devices_) {
+                const r_device* dev_tmpl = ref.tmpl;
+                if (dev_tmpl->priority > priority && dev_tmpl->priority < next_priority) {
+                    next_priority = dev_tmpl->priority;
                 }
-                if (dev.priority != priority) {
+                if (dev_tmpl->priority != priority) {
                     continue;
                 }
 
+                /* Early exit if modulation doesn't match (cheap check on const template). */
+                bool mod_match = false;
                 if (fm_mode) {
-                    switch (dev.modulation) {
-                        case FSK_PULSE_PCM:
-                            events += pulse_slicer_pcm(pulse_data, &dev);
-                            break;
-                        case FSK_PULSE_PWM:
-                            events += pulse_slicer_pwm(pulse_data, &dev);
-                            break;
-                        case FSK_PULSE_MANCHESTER_ZEROBIT:
-                            events += pulse_slicer_manchester_zerobit(pulse_data, &dev);
-                            break;
-                        default:
-                            break;
-                    }
+                    mod_match = (dev_tmpl->modulation >= FSK_DEMOD_MIN_VAL);
                 } else {
-                    switch (dev.modulation) {
-                        case OOK_PULSE_PCM:
-                            events += pulse_slicer_pcm(pulse_data, &dev);
-                            break;
-                        case OOK_PULSE_PPM:
-                            events += pulse_slicer_ppm(pulse_data, &dev);
-                            break;
-                        case OOK_PULSE_PWM:
-                            events += pulse_slicer_pwm(pulse_data, &dev);
-                            break;
-                        case OOK_PULSE_MANCHESTER_ZEROBIT:
-                            events += pulse_slicer_manchester_zerobit(pulse_data, &dev);
-                            break;
-                        case OOK_PULSE_PIWM_RAW:
-                            events += pulse_slicer_piwm_raw(pulse_data, &dev);
-                            break;
-                        case OOK_PULSE_PIWM_DC:
-                            events += pulse_slicer_piwm_dc(pulse_data, &dev);
-                            break;
-                        case OOK_PULSE_DMC:
-                            events += pulse_slicer_dmc(pulse_data, &dev);
-                            break;
-                        case OOK_PULSE_PWM_OSV1:
-                            events += pulse_slicer_osv1(pulse_data, &dev);
-                            break;
-                        case OOK_PULSE_NRZS:
-                            events += pulse_slicer_nrzs(pulse_data, &dev);
-                            break;
-                        default:
-                            break;
-                    }
+                    mod_match = (dev_tmpl->modulation < FSK_DEMOD_MIN_VAL);
+                }
+                if (!mod_match) {
+                    continue;
+                }
+
+                /* Only copy and decode if modulation already matched. */
+                r_device dev = *dev_tmpl;
+                dev.protocol_num = ref.protocol_num;
+                dev.output_fn = &ParserBridge::output_handler;
+                dev.output_ctx = this;
+                dev.log_fn = &ParserBridge::log_handler;
+                dev.decode_events = 0;
+                dev.decode_ok = 0;
+                dev.decode_messages = 0;
+                std::memset(dev.decode_fails, 0, sizeof(dev.decode_fails));
+
+                switch (dev.modulation) {
+                    case FSK_PULSE_PCM:
+                    case OOK_PULSE_PCM:
+                        events += pulse_slicer_pcm(pulse_data, &dev);
+                        break;
+                    case FSK_PULSE_PWM:
+                    case OOK_PULSE_PWM:
+                        events += pulse_slicer_pwm(pulse_data, &dev);
+                        break;
+                    case FSK_PULSE_MANCHESTER_ZEROBIT:
+                    case OOK_PULSE_MANCHESTER_ZEROBIT:
+                        events += pulse_slicer_manchester_zerobit(pulse_data, &dev);
+                        break;
+                    case OOK_PULSE_PPM:
+                        events += pulse_slicer_ppm(pulse_data, &dev);
+                        break;
+                    case OOK_PULSE_PIWM_RAW:
+                        events += pulse_slicer_piwm_raw(pulse_data, &dev);
+                        break;
+                    case OOK_PULSE_PIWM_DC:
+                        events += pulse_slicer_piwm_dc(pulse_data, &dev);
+                        break;
+                    case OOK_PULSE_DMC:
+                        events += pulse_slicer_dmc(pulse_data, &dev);
+                        break;
+                    case OOK_PULSE_PWM_OSV1:
+                        events += pulse_slicer_osv1(pulse_data, &dev);
+                        break;
+                    case OOK_PULSE_NRZS:
+                        events += pulse_slicer_nrzs(pulse_data, &dev);
+                        break;
+                    default:
+                        break;
                 }
             }
         }
@@ -341,12 +338,6 @@ void RTL433View::append_decoded_results(const RtlPulsePacketData* packet) {
     const auto result = parser_bridge_->parse(packet, modulation_ != 0);
 
     if (result.events <= 0) {
-        return;
-    }
-
-    static uint8_t print_decimation = 0;
-    print_decimation = (print_decimation + 1) & 0x03;
-    if (print_decimation != 0) {
         return;
     }
 
