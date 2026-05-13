@@ -40,11 +40,11 @@ extern "C" {
 #include "r_device.h"
 #include "rtl_433_devices.h"
 
-#define DEVICESMINIMAL \
-    DECL(lacrossetx)   \
-    DECL(acurite_th)   \
-    DECL(nexus)        \
-    DECL(acurite_txr)  \
+#define DEVICES       \
+    DECL(lacrossetx)  \
+    DECL(acurite_th)  \
+    DECL(nexus)       \
+    DECL(acurite_txr) \
     DECL(acurite_986)
 
 #define DECL(name) extern r_device name;
@@ -180,7 +180,7 @@ class RTL433View::ParserBridge {
 
     void init_devices() {
 #define DECL(name) &name,
-        static r_device const* const available_devices[] = {DEVICESMINIMAL};
+        static r_device const* const available_devices[] = {DEVICES};
 #undef DECL
 
         devices_.reserve(sizeof(available_devices) / sizeof(available_devices[0]));
