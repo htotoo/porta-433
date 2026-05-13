@@ -27,10 +27,11 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
+#include <cstdio>
 #include <climits>
 #include <cstring>
 #include <string>
-#include <vector>
 
 extern "C" {
 #include "data.h"
@@ -64,18 +65,19 @@ class RTL433View::ParserBridge {
 
     struct ParseResult {
         int events{0};
-        std::vector<std::string> lines{};
+        size_t line_count{0};
     };
 
     ParseResult parse(const RtlPulsePacketData* packet, bool fm_mode) {
         ParseResult result{};
-        decoded_lines_.clear();
+        decoded_line_count_ = 0;
 
         if (!packet || packet->num_pulses == 0 || packet->sample_rate == 0) {
             return result;
         }
 
-        pulse_data_t pulse_data{};
+        pulse_data_t& pulse_data = pulse_data_;
+        std::memset(&pulse_data, 0, sizeof(pulse_data));
         pulse_data.sample_rate = packet->sample_rate;
         pulse_data.num_pulses = std::min<unsigned>(packet->num_pulses, PD_MAX_PULSES);
         pulse_data.ook_low_estimate = static_cast<int>(packet->ook_low_estimate);
@@ -87,28 +89,86 @@ class RTL433View::ParserBridge {
         }
 
         result.events = run_demods(&pulse_data, fm_mode);
-        result.lines = decoded_lines_;
+        result.line_count = decoded_line_count_;
         return result;
     }
 
-   private:
-    std::vector<r_device> devices_{};
-    std::vector<std::string> decoded_lines_{};
+    const char* line_at(size_t index) const {
+        if (index >= decoded_line_count_) {
+            return "";
+        }
+        return decoded_lines_[index].data();
+    }
 
-    static void output_handler(r_device* decoder, data_t* data) {
-        if (!decoder || !data) {
+   private:
+    static constexpr size_t kMaxFieldsPerCallback = 48;
+    static constexpr size_t kMaxOutputLines = 24;
+    static constexpr size_t kMaxLineLen = 96;
+    std::vector<r_device> devices_{};
+    std::array<std::array<char, kMaxLineLen>, kMaxOutputLines> decoded_lines_{};
+    size_t decoded_line_count_{0};
+    pulse_data_t pulse_data_{};
+
+    void append_line(const char* text) {
+        if (!text || decoded_line_count_ >= kMaxOutputLines) {
+            return;
+        }
+        auto& dst = decoded_lines_[decoded_line_count_++];
+        std::snprintf(dst.data(), dst.size(), "%s", text);
+    }
+
+    static void value_to_string(data_t* entry, char* out, size_t out_len) {
+        if (!out || out_len == 0) {
+            return;
+        }
+        out[0] = '\0';
+
+        if (!entry) {
             return;
         }
 
+        switch (entry->type) {
+            case DATA_INT:
+                std::snprintf(out, out_len, "%d", entry->value.v_int);
+                return;
+            case DATA_DOUBLE:
+                std::snprintf(out, out_len, "%.3f", entry->value.v_dbl);
+                return;
+            case DATA_STRING:
+                std::snprintf(out, out_len, "%s", entry->value.v_ptr ? static_cast<const char*>(entry->value.v_ptr) : "");
+                return;
+            case DATA_DATA:
+                std::snprintf(out, out_len, "{data}");
+                return;
+            case DATA_ARRAY:
+                std::snprintf(out, out_len, "{array}");
+                return;
+            default:
+                return;
+        }
+    }
+
+    /* Arena-allocated data is always valid – no pointer-sanity checks needed. */
+    static void output_handler(r_device* decoder, data_t* data) {
+        if (!decoder || !data) {
+            if (data) data_free(data);
+            return;
+        }
         auto* self = static_cast<ParserBridge*>(decoder->output_ctx);
         if (!self) {
             data_free(data);
             return;
         }
-
-        std::array<char, 384> json{};
-        data_print_jsons(data, json.data(), json.size());
-        self->decoded_lines_.push_back(std::string(decoder->name) + " " + json.data());
+        self->append_line(decoder->name ? decoder->name : "?");
+        size_t field_count = 0;
+        for (data_t* e = data; e && field_count < kMaxFieldsPerCallback; e = e->next, ++field_count) {
+            if (!e->key) continue;
+            char value_buf[48]{};
+            char line_buf[kMaxLineLen]{};
+            value_to_string(e, value_buf, sizeof(value_buf));
+            std::snprintf(line_buf, sizeof(line_buf), "%s=%s", e->key, value_buf);
+            self->append_line(line_buf);
+        }
         data_free(data);
     }
 
@@ -284,13 +344,19 @@ void RTL433View::append_decoded_results(const RtlPulsePacketData* packet) {
         return;
     }
 
+    static uint8_t print_decimation = 0;
+    print_decimation = (print_decimation + 1) & 0x03;
+    if (print_decimation != 0) {
+        return;
+    }
+
     console.writeln("------------------------------");
     console.writeln(
         "F=" + to_string_freq(receiver_model.target_frequency()) +
         " parsed=" + to_string_dec_uint(static_cast<uint32_t>(result.events)));
 
-    for (const auto& line : result.lines) {
-        console.writeln(line);
+    for (size_t i = 0; i < result.line_count; ++i) {
+        console.writeln(parser_bridge_->line_at(i));
     }
 }
 

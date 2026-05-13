@@ -131,6 +131,7 @@ set(CSRC
 	${HACKRF_PATH}/firmware/common/gpio_lpc.c
 	${HACKRF_PATH}/firmware/common/platform_detect.c
 	${CHIBIOS}/os/various/chprintf.c
+	rtl433_no_console.c
 )
 
 set(RTL433_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../../rtl_433)
@@ -140,17 +141,41 @@ set(RTL433_CORE_CSRC
 	${RTL433_PATH}/src/bit_util.c
 	${RTL433_PATH}/src/bitbuffer.c
 	${RTL433_PATH}/src/compat_time.c
-	${RTL433_PATH}/src/data.c
 	${RTL433_PATH}/src/decoder_util.c
 	${RTL433_PATH}/src/list.c
 	${RTL433_PATH}/src/logger.c
 	${RTL433_PATH}/src/pulse_slicer.c
 	${RTL433_PATH}/src/r_util.c
+	rtl433_data_shim.c
 )
 
 file(GLOB RTL433_DEVICE_CSRC ${RTL433_PATH}/src/devices/*.c)
 
 list(APPEND CSRC ${RTL433_CORE_CSRC} ${RTL433_DEVICE_CSRC})
+
+set(RTL433_NO_CONSOLE_DEFS
+	RTL_433_REDUCE_STACK_USE
+	printf=rtl433_noop_printf
+	fprintf=rtl433_noop_fprintf
+	vprintf=rtl433_noop_vprintf
+	vfprintf=rtl433_noop_vfprintf
+	puts=rtl433_noop_puts
+	fputs=rtl433_noop_fputs
+	fputc=rtl433_noop_fputc
+	putchar=rtl433_noop_putchar
+	perror=rtl433_noop_perror
+)
+
+set_source_files_properties(
+	${RTL433_CORE_CSRC}
+	${RTL433_DEVICE_CSRC}
+	PROPERTIES COMPILE_DEFINITIONS "${RTL433_NO_CONSOLE_DEFS}"
+)
+
+set_source_files_properties(
+	rtl433_data_shim.c
+	PROPERTIES COMPILE_DEFINITIONS ""
+)
 
 #look for all i2cdev_ files
 file(GLOB I2CDEV_SOURCES ${COMMON}/i2cdev_*.cpp)
