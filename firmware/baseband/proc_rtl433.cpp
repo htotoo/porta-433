@@ -61,7 +61,20 @@ void RTL433Processor::execute(const buffer_c8_t& buffer) {
     }
 
     for (size_t i = 0; i < decim_1_out.count; ++i) {
-        get_detection_level_fm(decim_1_out.p[i]);
+        const uint32_t fm_level = get_detection_level_fm(decim_1_out.p[i]);
+
+        // Very cheap FM squelch: below this discriminator activity floor,
+        // force low level so random noise does not create fake pulse trains.
+        if (fm_level < fm_min_dev_for_detect) {
+            const bool high_level = apply_glitch_filter(false);
+            if (detect_package_from_level_fm(high_level)) {
+                if (pulse_data.num_pulses >= pd_min_pulses) {
+                    emit_pulse_package();
+                }
+                reset_pulse_detector();
+            }
+            continue;
+        }
 
         // SubTPMS-like FM slicing from discriminator sign with adaptive hysteresis.
         int32_t fm_hysteresis = fm_state.dev_lp >> 2;
@@ -391,6 +404,26 @@ void RTL433Processor::emit_pulse_package() {
     // flooding M0 parsing and destabilizing the system.
     if (!shared_memory.application_queue.is_empty()) {
         return;
+    }
+
+    // Suppress tight duplicate bursts (same pulse shape repeated many times).
+    // Keep 1 of every 4 identical packets to reduce M0/UI overload.
+    uint32_t sig = 0x9e3779b9u ^ static_cast<uint32_t>(pulse_data.num_pulses);
+    const uint16_t sig_len = std::min<uint16_t>(pulse_data.num_pulses, 10);
+    for (uint16_t i = 0; i < sig_len; ++i) {
+        sig ^= static_cast<uint32_t>(pulse_data.pulse[i]) + 0x85ebca6bu + (sig << 6) + (sig >> 2);
+        sig ^= static_cast<uint32_t>(pulse_data.gap[i]) + 0xc2b2ae35u + (sig << 6) + (sig >> 2);
+    }
+    if (sig == last_tx_signature_ && pulse_data.num_pulses == last_tx_pulses_) {
+        if (repeated_tx_count_ < 3) {
+            ++repeated_tx_count_;
+            return;
+        }
+        repeated_tx_count_ = 0;
+    } else {
+        last_tx_signature_ = sig;
+        last_tx_pulses_ = pulse_data.num_pulses;
+        repeated_tx_count_ = 0;
     }
 
     tx_packet_.num_pulses = pulse_data.num_pulses;

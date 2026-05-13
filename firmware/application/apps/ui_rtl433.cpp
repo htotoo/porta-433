@@ -71,7 +71,6 @@ class RTL433View::ParserBridge {
         }
 
         pulse_data_t& pulse_data = pulse_data_;
-        std::memset(&pulse_data, 0, sizeof(pulse_data));
         pulse_data.sample_rate = packet->sample_rate;
         pulse_data.num_pulses = std::min<unsigned>(packet->num_pulses, PD_MAX_PULSES);
         pulse_data.ook_low_estimate = static_cast<int>(packet->ook_low_estimate);

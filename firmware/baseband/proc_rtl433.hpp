@@ -80,6 +80,7 @@ class RTL433Processor : public BasebandProcessor {
     static constexpr uint32_t ook_est_low_ratio = 1024;
     static constexpr uint32_t ook_min_high_level = 1000;
     static constexpr uint32_t ook_max_high_level = 32768;
+    static constexpr uint32_t fm_min_dev_for_detect = 1400;
 
     std::array<complex16_t, 512> dst{};
     const buffer_c16_t dst_buffer{dst.data(), dst.size()};
@@ -109,6 +110,9 @@ class RTL433Processor : public BasebandProcessor {
     PulseData pulse_data{};
     FmState fm_state{};
     RtlPulsePacketData tx_packet_{};
+    uint32_t last_tx_signature_{0};
+    uint16_t last_tx_pulses_{0};
+    uint8_t repeated_tx_count_{0};
 
     void configure(const SubGhzFPRxConfigureMessage& message);
     void on_beep_message(const AudioBeepMessage& message);
