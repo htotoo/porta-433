@@ -30,6 +30,8 @@
 #include "ui_navigation.hpp"
 #include "ui_receiver.hpp"
 
+#include <memory>
+
 namespace ui {
 
 class RTL433View : public View {
@@ -41,9 +43,11 @@ class RTL433View : public View {
     std::string title() const override { return "RTL433"; }
 
    private:
+    class ParserBridge;
+
     void on_freqchg(int64_t freq);
     void on_packet(const RtlPulsePacketData* packet);
-    void append_packet_summary(const RtlPulsePacketData* packet);
+    void append_decoded_results(const RtlPulsePacketData* packet);
 
     NavigationView& nav_;
     RxRadioState radio_state_{
@@ -81,6 +85,8 @@ class RTL433View : public View {
         {{"AM", 0}, {"FM", 1}}};
 
     Console console{{0, 48, screen_width, screen_height - 48 - 16}};
+
+    std::unique_ptr<ParserBridge> parser_bridge_{};
 
     MessageHandlerRegistration message_handler_freqchg{
         Message::ID::FreqChangeCommand,

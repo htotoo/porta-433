@@ -133,6 +133,25 @@ set(CSRC
 	${CHIBIOS}/os/various/chprintf.c
 )
 
+set(RTL433_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../../rtl_433)
+
+set(RTL433_CORE_CSRC
+	${RTL433_PATH}/src/abuf.c
+	${RTL433_PATH}/src/bit_util.c
+	${RTL433_PATH}/src/bitbuffer.c
+	${RTL433_PATH}/src/compat_time.c
+	${RTL433_PATH}/src/data.c
+	${RTL433_PATH}/src/decoder_util.c
+	${RTL433_PATH}/src/list.c
+	${RTL433_PATH}/src/logger.c
+	${RTL433_PATH}/src/pulse_slicer.c
+	${RTL433_PATH}/src/r_util.c
+)
+
+file(GLOB RTL433_DEVICE_CSRC ${RTL433_PATH}/src/devices/*.c)
+
+list(APPEND CSRC ${RTL433_CORE_CSRC} ${RTL433_DEVICE_CSRC})
+
 #look for all i2cdev_ files
 file(GLOB I2CDEV_SOURCES ${COMMON}/i2cdev_*.cpp)
 
@@ -348,6 +367,7 @@ set(INCDIR ${CMAKE_CURRENT_BINARY_DIR} ${COMMON} ${PORTINC} ${KERNINC} ${TESTINC
 	${HALINC} ${PLATFORMINC} ${BOARDINC}
 	${FATFSINC}
 	${CHIBIOS}/os/various
+	${RTL433_PATH}/include
 	${HACKRF_PATH}/firmware/libopencm3/include
 	${HACKRF_PATH}/firmware/common
 	${HACKRF_PATH}/firmware
