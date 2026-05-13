@@ -1,3 +1,6 @@
 [submodule "hackrf"]
 	path = hackrf
 	url = https://github.com/portapack-mayhem/hackrf.git
+[submodule "rtl_433"]
+	path = rtl_433
+	url = https://github.com/merbanan/rtl_433.git
