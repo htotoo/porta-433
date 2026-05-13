@@ -90,6 +90,9 @@ class RTL433Processor : public BasebandProcessor {
     size_t baseband_fs{baseband_fs_default};
     uint32_t decimated_fs{baseband_fs_default / total_decimation};
     uint32_t ns_per_decimated_sample{0};
+    uint32_t glitch_min_samples{1};
+    uint32_t min_gap_samples{1};
+    uint32_t max_gap_samples{1};
 
     bool configured{false};
     Modulation modulation{Modulation::AM_OOK};
@@ -105,12 +108,15 @@ class RTL433Processor : public BasebandProcessor {
 
     PulseData pulse_data{};
     FmState fm_state{};
+    RtlPulsePacketData tx_packet_{};
 
     void configure(const SubGhzFPRxConfigureMessage& message);
     void on_beep_message(const AudioBeepMessage& message);
 
-    uint32_t get_detection_level(const complex16_t& sample);
-    bool detect_package_from_level(uint32_t level, bool level_is_high);
+    uint32_t get_detection_level_am(const complex16_t& sample) const;
+    uint32_t get_detection_level_fm(const complex16_t& sample);
+    bool detect_package_from_level_am(uint32_t level, bool level_is_high);
+    bool detect_package_from_level_fm(bool level_is_high);
     bool apply_glitch_filter(bool raw_level);
     void emit_pulse_package();
     void reset_pulse_detector();

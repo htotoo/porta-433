@@ -34,36 +34,50 @@ void RTL433Processor::execute(const buffer_c8_t& buffer) {
     const auto decim_1_out = decim_1.execute(decim_0_out, dst_buffer);
     feed_channel_stats(decim_1_out);
 
-    for (size_t i = 0; i < decim_1_out.count; ++i) {
-        const auto level = get_detection_level(decim_1_out.p[i]);
-        bool raw_level = stable_level;
+    if (modulation == Modulation::AM_OOK) {
+        for (size_t i = 0; i < decim_1_out.count; ++i) {
+            const uint32_t level = get_detection_level_am(decim_1_out.p[i]);
 
-        if (modulation == Modulation::AM_OOK) {
             // rtl_433 style AM envelope thresholding with hysteresis.
-            const uint32_t threshold = (ook_low_estimate + std::min(ook_high_estimate, ook_max_high_level)) / 2;
-            const uint32_t hysteresis = std::max<uint32_t>(threshold / 8, 16);
+            const uint32_t threshold = (ook_low_estimate + std::min(ook_high_estimate, ook_max_high_level)) >> 1;
+            const uint32_t hysteresis = std::max<uint32_t>(threshold >> 3, 16);
+
+            bool raw_level = stable_level;
             if (level > (threshold + hysteresis)) {
                 raw_level = true;
             } else if (level < (threshold - hysteresis)) {
                 raw_level = false;
             }
-        } else {
-            // SubTPMS-like FM slicing from discriminator sign with adaptive hysteresis.
-            int32_t fm_hysteresis = fm_state.dev_lp >> 2;
-            if (fm_hysteresis < 1024) {
-                fm_hysteresis = 1024;
-            }
 
-            if (fm_state.discrim_lp > (fm_state.dc_lp + fm_hysteresis)) {
-                raw_level = true;
-            } else if (fm_state.discrim_lp < (fm_state.dc_lp - fm_hysteresis)) {
-                raw_level = false;
+            const bool high_level = apply_glitch_filter(raw_level);
+            if (detect_package_from_level_am(level, high_level)) {
+                if (pulse_data.num_pulses >= pd_min_pulses) {
+                    emit_pulse_package();
+                }
+                reset_pulse_detector();
             }
+        }
+        return;
+    }
+
+    for (size_t i = 0; i < decim_1_out.count; ++i) {
+        get_detection_level_fm(decim_1_out.p[i]);
+
+        // SubTPMS-like FM slicing from discriminator sign with adaptive hysteresis.
+        int32_t fm_hysteresis = fm_state.dev_lp >> 2;
+        if (fm_hysteresis < 1024) {
+            fm_hysteresis = 1024;
+        }
+
+        bool raw_level = stable_level;
+        if (fm_state.discrim_lp > (fm_state.dc_lp + fm_hysteresis)) {
+            raw_level = true;
+        } else if (fm_state.discrim_lp < (fm_state.dc_lp - fm_hysteresis)) {
+            raw_level = false;
         }
 
         const bool high_level = apply_glitch_filter(raw_level);
-
-        if (detect_package_from_level(level, high_level)) {
+        if (detect_package_from_level_fm(high_level)) {
             if (pulse_data.num_pulses >= pd_min_pulses) {
                 emit_pulse_package();
             }
@@ -100,6 +114,11 @@ void RTL433Processor::configure(const SubGhzFPRxConfigureMessage& message) {
         decimated_fs = 1;
     }
     ns_per_decimated_sample = static_cast<uint32_t>(1000000000ULL / decimated_fs);
+    glitch_min_samples = std::max<uint32_t>((15000U + ns_per_decimated_sample - 1) / ns_per_decimated_sample, 1);
+
+    const uint32_t samples_per_ms = std::max<uint32_t>(decimated_fs / 1000, 1);
+    min_gap_samples = pd_min_gap_ms * samples_per_ms;
+    max_gap_samples = pd_max_gap_ms * samples_per_ms;
 
     // Keep FIRs simple and CPU-cheap for M4.
     decim_0.configure(taps_200k_decim_0.taps);
@@ -113,15 +132,16 @@ void RTL433Processor::on_beep_message(const AudioBeepMessage& message) {
     audio::dma::beep_start(message.freq, message.sample_rate, message.duration_ms);
 }
 
-uint32_t RTL433Processor::get_detection_level(const complex16_t& sample) {
+uint32_t RTL433Processor::get_detection_level_am(const complex16_t& sample) const {
     const int16_t re = sample.real();
     const int16_t im = sample.imag();
+    const uint32_t mag_sq = static_cast<uint32_t>(re) * static_cast<uint32_t>(re) + static_cast<uint32_t>(im) * static_cast<uint32_t>(im);
+    return mag_sq >> 10;
+}
 
-    if (modulation == Modulation::AM_OOK) {
-        const uint32_t mag_sq = static_cast<uint32_t>(re) * static_cast<uint32_t>(re) + static_cast<uint32_t>(im) * static_cast<uint32_t>(im);
-        return mag_sq >> 10;
-    }
-
+uint32_t RTL433Processor::get_detection_level_fm(const complex16_t& sample) {
+    const int16_t re = sample.real();
+    const int16_t im = sample.imag();
     // Lightweight FM discriminator energy for package detection.
     const int16_t re_s = re >> 2;
     const int16_t im_s = im >> 2;
@@ -139,98 +159,98 @@ uint32_t RTL433Processor::get_detection_level(const complex16_t& sample) {
     return static_cast<uint32_t>(fm_state.dev_lp);
 }
 
-bool RTL433Processor::detect_package_from_level(uint32_t level, bool level_is_high) {
-    const uint32_t samples_per_ms = std::max<uint32_t>(decimated_fs / 1000, 1);
+bool RTL433Processor::detect_package_from_level_fm(bool level_is_high) {
     bool end_of_package = false;
 
-    // FM mode: explicit pulse/gap packaging path.
-    if (modulation == Modulation::FM_FSK) {
-        switch (ook_state) {
-            case OOKState::Idle:
-                if (level_is_high) {
-                    pulse_data.clear();
-                    pulse_data.sample_rate = decimated_fs;
-                    pulse_length = 0;
-                    max_pulse = 0;
-                    ook_state = OOKState::Pulse;
-                }
-                break;
+    switch (ook_state) {
+        case OOKState::Idle:
+            if (level_is_high) {
+                pulse_data.clear();
+                pulse_data.sample_rate = decimated_fs;
+                pulse_length = 0;
+                max_pulse = 0;
+                ook_state = OOKState::Pulse;
+            }
+            break;
 
-            case OOKState::Pulse:
-                if (pulse_length < 0xFFFF) {
-                    ++pulse_length;
-                }
+        case OOKState::Pulse:
+            if (pulse_length < 0xFFFF) {
+                ++pulse_length;
+            }
 
-                if (!level_is_high) {
-                    if (pulse_length < pd_min_pulse_samples) {
-                        if (pulse_data.num_pulses <= 1) {
-                            ook_state = OOKState::Idle;
-                            pulse_length = 0;
-                        } else {
-                            end_of_package = true;
-                            ook_state = OOKState::Gap;
-                        }
-                    } else {
-                        if (pulse_data.num_pulses < PulseData::max_pulses) {
-                            pulse_data.pulse[pulse_data.num_pulses] = pulse_length;
-                        }
-                        max_pulse = std::max(max_pulse, pulse_length);
+            if (!level_is_high) {
+                if (pulse_length < pd_min_pulse_samples) {
+                    if (pulse_data.num_pulses <= 1) {
+                        ook_state = OOKState::Idle;
                         pulse_length = 0;
-                        ook_state = OOKState::GapStart;
+                    } else {
+                        end_of_package = true;
+                        ook_state = OOKState::Gap;
                     }
-                }
-                break;
-
-            case OOKState::GapStart:
-                if (pulse_length < 0xFFFF) {
-                    ++pulse_length;
-                }
-
-                if (level_is_high) {
+                } else {
                     if (pulse_data.num_pulses < PulseData::max_pulses) {
-                        pulse_length = static_cast<uint16_t>(pulse_length + pulse_data.pulse[pulse_data.num_pulses]);
+                        pulse_data.pulse[pulse_data.num_pulses] = pulse_length;
                     }
-                    ook_state = OOKState::Pulse;
-                } else if (pulse_length >= pd_min_pulse_samples) {
-                    ook_state = OOKState::Gap;
+                    max_pulse = std::max(max_pulse, pulse_length);
+                    pulse_length = 0;
+                    ook_state = OOKState::GapStart;
                 }
-                break;
+            }
+            break;
 
-            case OOKState::Gap:
-                if (pulse_length < 0xFFFF) {
-                    ++pulse_length;
+        case OOKState::GapStart:
+            if (pulse_length < 0xFFFF) {
+                ++pulse_length;
+            }
+
+            if (level_is_high) {
+                if (pulse_data.num_pulses < PulseData::max_pulses) {
+                    pulse_length = static_cast<uint16_t>(pulse_length + pulse_data.pulse[pulse_data.num_pulses]);
+                }
+                ook_state = OOKState::Pulse;
+            } else if (pulse_length >= pd_min_pulse_samples) {
+                ook_state = OOKState::Gap;
+            }
+            break;
+
+        case OOKState::Gap:
+            if (pulse_length < 0xFFFF) {
+                ++pulse_length;
+            }
+
+            if (level_is_high) {
+                if (pulse_data.num_pulses < PulseData::max_pulses) {
+                    pulse_data.gap[pulse_data.num_pulses] = pulse_length;
+                    ++pulse_data.num_pulses;
                 }
 
-                if (level_is_high) {
+                if (pulse_data.num_pulses >= PulseData::max_pulses) {
+                    end_of_package = true;
+                }
+
+                pulse_length = 0;
+                ook_state = OOKState::Pulse;
+            }
+
+            if (!end_of_package && (max_pulse > 0)) {
+                const bool gap_ratio_hit = pulse_length > (pd_max_gap_ratio * max_pulse) && pulse_length > min_gap_samples;
+                const bool max_gap_hit = pulse_length > max_gap_samples;
+                if (gap_ratio_hit || max_gap_hit) {
                     if (pulse_data.num_pulses < PulseData::max_pulses) {
                         pulse_data.gap[pulse_data.num_pulses] = pulse_length;
                         ++pulse_data.num_pulses;
                     }
-
-                    if (pulse_data.num_pulses >= PulseData::max_pulses) {
-                        end_of_package = true;
-                    }
-
-                    pulse_length = 0;
-                    ook_state = OOKState::Pulse;
+                    end_of_package = true;
                 }
-
-                if (!end_of_package && (max_pulse > 0)) {
-                    const bool gap_ratio_hit = pulse_length > (pd_max_gap_ratio * max_pulse) && pulse_length > (pd_min_gap_ms * samples_per_ms);
-                    const bool max_gap_hit = pulse_length > (pd_max_gap_ms * samples_per_ms);
-                    if (gap_ratio_hit || max_gap_hit) {
-                        if (pulse_data.num_pulses < PulseData::max_pulses) {
-                            pulse_data.gap[pulse_data.num_pulses] = pulse_length;
-                            ++pulse_data.num_pulses;
-                        }
-                        end_of_package = true;
-                    }
-                }
-                break;
-        }
-
-        return end_of_package;
+            }
+            break;
     }
+
+    return end_of_package;
+}
+
+bool RTL433Processor::detect_package_from_level_am(uint32_t level, bool level_is_high) {
+    bool end_of_package = false;
 
     switch (ook_state) {
         case OOKState::Idle:
@@ -241,10 +261,23 @@ bool RTL433Processor::detect_package_from_level(uint32_t level, bool level_is_hi
                 max_pulse = 0;
                 ook_state = OOKState::Pulse;
             } else {
-                const int32_t low_delta = static_cast<int32_t>(level) - static_cast<int32_t>(ook_low_estimate);
-                ook_low_estimate += low_delta / static_cast<int32_t>(ook_est_low_ratio);
-                if (low_delta != 0) {
-                    ook_low_estimate += (low_delta > 0) ? 1 : static_cast<uint32_t>(-1);
+                if (level >= ook_low_estimate) {
+                    const uint32_t low_delta = level - ook_low_estimate;
+                    ook_low_estimate += (low_delta >> 10);
+                    if (low_delta != 0) {
+                        ++ook_low_estimate;
+                    }
+                } else {
+                    const uint32_t low_delta = ook_low_estimate - level;
+                    const uint32_t low_step = (low_delta >> 10);
+                    if (low_step >= ook_low_estimate) {
+                        ook_low_estimate = 0;
+                    } else {
+                        ook_low_estimate -= low_step;
+                    }
+                    if (low_delta != 0 && ook_low_estimate > 0) {
+                        --ook_low_estimate;
+                    }
                 }
                 const uint32_t candidate_high = ook_low_estimate * 4;
                 ook_high_estimate = std::max<uint32_t>(candidate_high, ook_min_high_level);
@@ -277,7 +310,7 @@ bool RTL433Processor::detect_package_from_level(uint32_t level, bool level_is_hi
                     ook_state = OOKState::GapStart;
                 }
             } else {
-                ook_high_estimate += (level / ook_est_high_ratio) - (ook_high_estimate / ook_est_high_ratio);
+                ook_high_estimate += (level >> 6) - (ook_high_estimate >> 6);
                 ook_high_estimate = std::max<uint32_t>(ook_high_estimate, ook_min_high_level);
             }
             break;
@@ -317,8 +350,8 @@ bool RTL433Processor::detect_package_from_level(uint32_t level, bool level_is_hi
             }
 
             if (!end_of_package && (max_pulse > 0)) {
-                const bool gap_ratio_hit = pulse_length > (pd_max_gap_ratio * max_pulse) && pulse_length > (pd_min_gap_ms * samples_per_ms);
-                const bool max_gap_hit = pulse_length > (pd_max_gap_ms * samples_per_ms);
+                const bool gap_ratio_hit = pulse_length > (pd_max_gap_ratio * max_pulse) && pulse_length > min_gap_samples;
+                const bool max_gap_hit = pulse_length > max_gap_samples;
                 if (gap_ratio_hit || max_gap_hit) {
                     if (pulse_data.num_pulses < PulseData::max_pulses) {
                         pulse_data.gap[pulse_data.num_pulses] = pulse_length;
@@ -339,8 +372,10 @@ bool RTL433Processor::apply_glitch_filter(bool raw_level) {
         return stable_level;
     }
 
-    glitch_duration += ns_per_decimated_sample;
-    if (glitch_duration >= 15000) {
+    if (glitch_duration < 0xFFFFFFFF) {
+        ++glitch_duration;
+    }
+    if (glitch_duration >= glitch_min_samples) {
         stable_level = raw_level;
         glitch_duration = 0;
     }
@@ -352,18 +387,23 @@ void RTL433Processor::emit_pulse_package() {
         return;
     }
 
-    RtlPulsePacketData message{};
-    message.num_pulses = pulse_data.num_pulses;
-    message.sample_rate = pulse_data.sample_rate;
-    message.ook_low_estimate = ook_low_estimate;
-    message.ook_high_estimate = ook_high_estimate;
-
-    for (uint16_t i = 0; i < pulse_data.num_pulses && i < RtlPulsePacketData::max_pulses; ++i) {
-        message.pulse[i] = pulse_data.pulse[i];
-        message.gap[i] = pulse_data.gap[i];
+    // Backpressure: under heavy RF burst load, prefer dropping packets over
+    // flooding M0 parsing and destabilizing the system.
+    if (!shared_memory.application_queue.is_empty()) {
+        return;
     }
 
-    shared_memory.application_queue.push(message);
+    tx_packet_.num_pulses = pulse_data.num_pulses;
+    tx_packet_.sample_rate = pulse_data.sample_rate;
+    tx_packet_.ook_low_estimate = ook_low_estimate;
+    tx_packet_.ook_high_estimate = ook_high_estimate;
+
+    for (uint16_t i = 0; i < pulse_data.num_pulses && i < RtlPulsePacketData::max_pulses; ++i) {
+        tx_packet_.pulse[i] = pulse_data.pulse[i];
+        tx_packet_.gap[i] = pulse_data.gap[i];
+    }
+
+    shared_memory.application_queue.push(tx_packet_);
 }
 
 void RTL433Processor::reset_pulse_detector() {
