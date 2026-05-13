@@ -50,7 +50,7 @@
 
 class Message {
    public:
-    static constexpr size_t MAX_SIZE = 512;
+    static constexpr size_t MAX_SIZE = 1300;
 
     enum class ID : uint32_t {
         /* Assign consecutive IDs. IDs are used to index array. */
@@ -162,6 +162,7 @@ class Message {
         ToneDetectConfig = 104,
         FlexTosend = 105,
         SubTPMSData = 106,
+        RtlPulsePacket = 107,
         MAX
     };
 
@@ -1932,6 +1933,21 @@ class SubTPMSDataMessage : public Message {
     uint8_t battery = 0xFF;
     int16_t temperature = 0xFFFF;
     float pressure = -1.0;
+};
+
+class RtlPulsePacketData : public Message {
+   public:
+    static constexpr uint16_t max_pulses = 256;
+
+    constexpr RtlPulsePacketData()
+        : Message{ID::RtlPulsePacket} {}
+
+    uint16_t pulse[max_pulses]{0};  // Duration of each high pulse (samples)
+    uint16_t gap[max_pulses]{0};    // Duration of each gap between pulses (samples)
+    uint16_t num_pulses{0};         // Number of pulse+gap pairs
+    uint32_t sample_rate{0};        // Sample rate used (Hz)
+    uint32_t ook_low_estimate{0};   // AM low level estimate
+    uint32_t ook_high_estimate{0};  // AM high level estimate
 };
 
 #endif /*__MESSAGE_H__*/

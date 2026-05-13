@@ -294,6 +294,7 @@ set(CPPSRC
 	apps/ui_modemsetup.cpp
 	apps/ui_playlist.cpp
 	apps/ui_recon_settings.cpp
+	apps/ui_rtl433.cpp
 	apps/ui_sd_over_usb.cpp
 	apps/ui_search.cpp
 	apps/ui_settings.cpp

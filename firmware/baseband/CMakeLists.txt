@@ -392,6 +392,15 @@ set(MODE_CPPSRC
 DeclareTargets(PWFM wfm_audio)
 
 
+### RTL433 
+
+set(MODE_CPPSRC
+	proc_rtl433.cpp
+)
+DeclareTargets(PRTL rtl433)
+
+
+
 set(MODE_FLAGS "-Os")
 
 ### Flash Utility
