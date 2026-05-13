@@ -27,6 +27,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <climits>
@@ -97,52 +98,88 @@ class RTL433View::ParserBridge {
     static constexpr size_t kMaxFieldsPerCallback = 48;
     static constexpr size_t kMaxOutputLines = 24;
     static constexpr size_t kMaxLineLen = 96;
+    enum class SlicerKind : uint8_t {
+        None = 0,
+        PCM,
+        PWM,
+        Manchester,
+        PPM,
+        PIWM_RAW,
+        PIWM_DC,
+        DMC,
+        OSV1,
+        NRZS,
+    };
+
     struct DecoderRef {
         const r_device* tmpl;
-        unsigned protocol_num;
+        uint16_t protocol_num;
+        SlicerKind slicer;
     };
-    std::vector<DecoderRef> devices_{};
+    static constexpr size_t kMaxDecoderRefs = 256;
+    std::array<DecoderRef, kMaxDecoderRefs> devices_{};
+    size_t ook_count_{0};
+    size_t fm_count_{0};
     std::array<std::array<char, kMaxLineLen>, kMaxOutputLines> decoded_lines_{};
     size_t decoded_line_count_{0};
     pulse_data_t pulse_data_{};
 
-    void append_line(const char* text) {
-        if (!text || decoded_line_count_ >= kMaxOutputLines) {
+    void append_line(const std::string& text) {
+        if (decoded_line_count_ >= kMaxOutputLines) {
             return;
         }
         auto& dst = decoded_lines_[decoded_line_count_++];
-        std::snprintf(dst.data(), dst.size(), "%s", text);
+        const size_t copy_len = std::min(dst.size() - 1, text.size());
+        std::memcpy(dst.data(), text.data(), copy_len);
+        dst[copy_len] = '\0';
     }
 
-    static void value_to_string(data_t* entry, char* out, size_t out_len) {
-        if (!out || out_len == 0) {
-            return;
-        }
-        out[0] = '\0';
-
+    static std::string value_to_string(const data_t* entry) {
         if (!entry) {
-            return;
+            return {};
         }
 
         switch (entry->type) {
             case DATA_INT:
-                std::snprintf(out, out_len, "%d", entry->value.v_int);
-                return;
+                return to_string_dec_int(entry->value.v_int);
             case DATA_DOUBLE:
-                std::snprintf(out, out_len, "%.3f", entry->value.v_dbl);
-                return;
+                if (entry->value.v_dbl != entry->value.v_dbl) {
+                    return "nan";
+                } else {
+                    return to_string_decimal(static_cast<float>(entry->value.v_dbl), 1);
+                }
             case DATA_STRING:
-                std::snprintf(out, out_len, "%s", entry->value.v_ptr ? static_cast<const char*>(entry->value.v_ptr) : "");
-                return;
+                return entry->value.v_ptr ? static_cast<const char*>(entry->value.v_ptr) : "";
             case DATA_DATA:
-                std::snprintf(out, out_len, "{data}");
-                return;
+                return "{data}";
             case DATA_ARRAY:
-                std::snprintf(out, out_len, "{array}");
-                return;
+                return "{array}";
             default:
-                return;
+                return {};
         }
+    }
+
+    static size_t append_data_entry_lines(ParserBridge* self, const data_t* entry, size_t& field_count, unsigned depth) {
+        if (!self || !entry || !entry->key || field_count >= kMaxFieldsPerCallback) {
+            return 0;
+        }
+
+        if (entry->type == DATA_DATA && entry->value.v_ptr && depth < 3) {
+            size_t appended = 0;
+            for (const data_t* child = static_cast<const data_t*>(entry->value.v_ptr);
+                 child && field_count < kMaxFieldsPerCallback;
+                 child = child->next) {
+                appended += append_data_entry_lines(self, child, field_count, depth + 1);
+            }
+            return appended;
+        }
+
+        std::string line = entry->key;
+        line += '=';
+        line += value_to_string(entry);
+        self->append_line(line);
+        ++field_count;
+        return 1;
     }
 
     /* Arena-allocated data is always valid – no pointer-sanity checks needed. */
@@ -156,15 +193,15 @@ class RTL433View::ParserBridge {
             data_free(data);
             return;
         }
-        self->append_line(decoder->name ? decoder->name : "?");
+        const size_t line_mark = self->decoded_line_count_;
+        // self->append_line(decoder->name ? decoder->name : "?"); //no need for the long names
         size_t field_count = 0;
-        for (data_t* e = data; e && field_count < kMaxFieldsPerCallback; e = e->next, ++field_count) {
-            if (!e->key) continue;
-            char value_buf[48]{};
-            char line_buf[kMaxLineLen]{};
-            value_to_string(e, value_buf, sizeof(value_buf));
-            std::snprintf(line_buf, sizeof(line_buf), "%s=%s", e->key, value_buf);
-            self->append_line(line_buf);
+        size_t appended_fields = 0;
+        for (const data_t* e = data; e && field_count < kMaxFieldsPerCallback; e = e->next) {
+            appended_fields += append_data_entry_lines(self, e, field_count, 0);
+        }
+        if (appended_fields == 0) {
+            self->decoded_line_count_ = line_mark;
         }
         data_free(data);
     }
@@ -180,92 +217,137 @@ class RTL433View::ParserBridge {
         static const r_device* const available_devices[] = {DEVICES};
 #undef DECL
 
-        devices_.reserve(sizeof(available_devices) / sizeof(available_devices[0]));
+        const size_t device_count = sizeof(available_devices) / sizeof(available_devices[0]);
+        ook_count_ = 0;
+        fm_count_ = 0;
+        size_t total_count = 0;
 
-        for (size_t i = 0; i < (sizeof(available_devices) / sizeof(available_devices[0])); ++i) {
+        auto slicer_for_modulation = [](unsigned modulation) -> SlicerKind {
+            switch (modulation) {
+                case FSK_PULSE_PCM:
+                case OOK_PULSE_PCM:
+                    return SlicerKind::PCM;
+                case FSK_PULSE_PWM:
+                case OOK_PULSE_PWM:
+                    return SlicerKind::PWM;
+                case FSK_PULSE_MANCHESTER_ZEROBIT:
+                case OOK_PULSE_MANCHESTER_ZEROBIT:
+                    return SlicerKind::Manchester;
+                case OOK_PULSE_PPM:
+                    return SlicerKind::PPM;
+                case OOK_PULSE_PIWM_RAW:
+                    return SlicerKind::PIWM_RAW;
+                case OOK_PULSE_PIWM_DC:
+                    return SlicerKind::PIWM_DC;
+                case OOK_PULSE_DMC:
+                    return SlicerKind::DMC;
+                case OOK_PULSE_PWM_OSV1:
+                    return SlicerKind::OSV1;
+                case OOK_PULSE_NRZS:
+                    return SlicerKind::NRZS;
+                default:
+                    return SlicerKind::None;
+            }
+        };
+
+        // First pass: OOK decoders.
+        for (size_t i = 0; i < device_count && total_count < kMaxDecoderRefs; ++i) {
             const r_device* dev = available_devices[i];
-            if (!dev || !dev->decode_fn || !dev->name) {
+            if (!dev || !dev->decode_fn || !dev->name || dev->modulation >= FSK_DEMOD_MIN_VAL) {
                 continue;
             }
-
-            devices_.push_back(DecoderRef{dev, static_cast<unsigned>(i + 1)});
+            const SlicerKind slicer = slicer_for_modulation(dev->modulation);
+            if (slicer == SlicerKind::None) {
+                continue;
+            }
+            devices_[total_count++] = DecoderRef{dev, static_cast<uint16_t>(i + 1), slicer};
+            ++ook_count_;
         }
+
+        // Second pass: FSK decoders (append after OOK).
+        for (size_t i = 0; i < device_count && total_count < kMaxDecoderRefs; ++i) {
+            const r_device* dev = available_devices[i];
+            if (!dev || !dev->decode_fn || !dev->name || dev->modulation < FSK_DEMOD_MIN_VAL) {
+                continue;
+            }
+            const SlicerKind slicer = slicer_for_modulation(dev->modulation);
+            if (slicer == SlicerKind::None) {
+                continue;
+            }
+            devices_[total_count++] = DecoderRef{dev, static_cast<uint16_t>(i + 1), slicer};
+            ++fm_count_;
+        }
+
+        auto by_priority = [](const DecoderRef& a, const DecoderRef& b) {
+            return a.tmpl->priority < b.tmpl->priority;
+        };
+        std::sort(devices_.begin(), devices_.begin() + static_cast<std::ptrdiff_t>(ook_count_), by_priority);
+        std::sort(devices_.begin() + static_cast<std::ptrdiff_t>(ook_count_),
+                  devices_.begin() + static_cast<std::ptrdiff_t>(ook_count_ + fm_count_),
+                  by_priority);
     }
 
     int run_demods(pulse_data_t* pulse_data, bool fm_mode) {
+        const size_t offset = fm_mode ? ook_count_ : 0;
+        const size_t device_count = fm_mode ? fm_count_ : ook_count_;
+        const DecoderRef* devices = devices_.data() + offset;
+        if (device_count == 0) {
+            return 0;
+        }
+
         int events = 0;
-        unsigned next_priority = 0;
-
-        /* Keep rtl_433's original behavior: stop scanning priorities after first hit.
-         * This prevents long UI stalls when many decoders would otherwise continue to run. */
-        for (unsigned priority = 0; priority < UINT_MAX && events == 0; priority = next_priority) {
-            next_priority = UINT_MAX;
-
-            for (const auto& ref : devices_) {
-                const r_device* dev_tmpl = ref.tmpl;
-                if (dev_tmpl->priority > priority && dev_tmpl->priority < next_priority) {
-                    next_priority = dev_tmpl->priority;
+        unsigned current_priority = devices[0].tmpl->priority;
+        for (size_t idx = 0; idx < device_count; ++idx) {
+            const DecoderRef& ref = devices[idx];
+            const unsigned dev_priority = ref.tmpl->priority;
+            if (dev_priority != current_priority) {
+                if (events > 0) {
+                    break;
                 }
-                if (dev_tmpl->priority != priority) {
-                    continue;
-                }
+                current_priority = dev_priority;
+            }
 
-                /* Early exit if modulation doesn't match (cheap check on const template). */
-                bool mod_match = false;
-                if (fm_mode) {
-                    mod_match = (dev_tmpl->modulation >= FSK_DEMOD_MIN_VAL);
-                } else {
-                    mod_match = (dev_tmpl->modulation < FSK_DEMOD_MIN_VAL);
-                }
-                if (!mod_match) {
-                    continue;
-                }
+            r_device dev = *ref.tmpl;
+            dev.protocol_num = ref.protocol_num;
+            dev.output_fn = &ParserBridge::output_handler;
+            dev.output_ctx = this;
+            dev.log_fn = &ParserBridge::log_handler;
+            dev.decode_events = 0;
+            dev.decode_ok = 0;
+            dev.decode_messages = 0;
+            std::memset(dev.decode_fails, 0, sizeof(dev.decode_fails));
 
-                /* Only copy and decode if modulation already matched. */
-                r_device dev = *dev_tmpl;
-                dev.protocol_num = ref.protocol_num;
-                dev.output_fn = &ParserBridge::output_handler;
-                dev.output_ctx = this;
-                dev.log_fn = &ParserBridge::log_handler;
-                dev.decode_events = 0;
-                dev.decode_ok = 0;
-                dev.decode_messages = 0;
-                std::memset(dev.decode_fails, 0, sizeof(dev.decode_fails));
-
-                switch (dev.modulation) {
-                    case FSK_PULSE_PCM:
-                    case OOK_PULSE_PCM:
-                        events += pulse_slicer_pcm(pulse_data, &dev);
-                        break;
-                    case FSK_PULSE_PWM:
-                    case OOK_PULSE_PWM:
-                        events += pulse_slicer_pwm(pulse_data, &dev);
-                        break;
-                    case FSK_PULSE_MANCHESTER_ZEROBIT:
-                    case OOK_PULSE_MANCHESTER_ZEROBIT:
-                        events += pulse_slicer_manchester_zerobit(pulse_data, &dev);
-                        break;
-                    case OOK_PULSE_PPM:
-                        events += pulse_slicer_ppm(pulse_data, &dev);
-                        break;
-                    case OOK_PULSE_PIWM_RAW:
-                        events += pulse_slicer_piwm_raw(pulse_data, &dev);
-                        break;
-                    case OOK_PULSE_PIWM_DC:
-                        events += pulse_slicer_piwm_dc(pulse_data, &dev);
-                        break;
-                    case OOK_PULSE_DMC:
-                        events += pulse_slicer_dmc(pulse_data, &dev);
-                        break;
-                    case OOK_PULSE_PWM_OSV1:
-                        events += pulse_slicer_osv1(pulse_data, &dev);
-                        break;
-                    case OOK_PULSE_NRZS:
-                        events += pulse_slicer_nrzs(pulse_data, &dev);
-                        break;
-                    default:
-                        break;
-                }
+            switch (ref.slicer) {
+                case SlicerKind::PCM:
+                    events += pulse_slicer_pcm(pulse_data, &dev);
+                    break;
+                case SlicerKind::PWM:
+                    events += pulse_slicer_pwm(pulse_data, &dev);
+                    break;
+                case SlicerKind::Manchester:
+                    events += pulse_slicer_manchester_zerobit(pulse_data, &dev);
+                    break;
+                case SlicerKind::PPM:
+                    events += pulse_slicer_ppm(pulse_data, &dev);
+                    break;
+                case SlicerKind::PIWM_RAW:
+                    events += pulse_slicer_piwm_raw(pulse_data, &dev);
+                    break;
+                case SlicerKind::PIWM_DC:
+                    events += pulse_slicer_piwm_dc(pulse_data, &dev);
+                    break;
+                case SlicerKind::DMC:
+                    events += pulse_slicer_dmc(pulse_data, &dev);
+                    break;
+                case SlicerKind::OSV1:
+                    events += pulse_slicer_osv1(pulse_data, &dev);
+                    break;
+                case SlicerKind::NRZS:
+                    events += pulse_slicer_nrzs(pulse_data, &dev);
+                    break;
+                case SlicerKind::None:
+                default:
+                    break;
             }
         }
 
@@ -288,7 +370,6 @@ RTL433View::RTL433View(NavigationView& nav)
 
     button_clear.on_select = [this](Button&) {
         console.clear(true);
-        console.writeln("rtl_433 pulse console cleared");
     };
 
     options_modulation.on_change = [this](size_t, OptionsField::value_t v) {
@@ -299,13 +380,9 @@ RTL433View::RTL433View(NavigationView& nav)
 
     field_frequency.set_step(10000);
 
-    console.writeln("rtl_433 pulse receiver ready");
-    console.writeln("waiting for RtlPulsePacketData from M4...");
-
     baseband::run_image(portapack::spi_flash::image_tag_rtl433);
     options_modulation.set_by_value(modulation_ ? 1 : 0);
     baseband::set_subghzd_config(modulation_, receiver_model.sampling_rate());
-    console.writeln(modulation_ ? "mode: FM/FSK" : "mode: AM/OOK");
     receiver_model.enable();
 }
 
@@ -337,15 +414,11 @@ void RTL433View::append_decoded_results(const RtlPulsePacketData* packet) {
 
     const auto result = parser_bridge_->parse(packet, modulation_ != 0);
 
-    if (result.events <= 0) {
+    if (result.events <= 0 || result.line_count == 0) {
         return;
     }
 
     console.writeln("------------------------------");
-    console.writeln(
-        "F=" + to_string_freq(receiver_model.target_frequency()) +
-        " parsed=" + to_string_dec_uint(static_cast<uint32_t>(result.events)));
-
     for (size_t i = 0; i < result.line_count; ++i) {
         console.writeln(parser_bridge_->line_at(i));
     }
