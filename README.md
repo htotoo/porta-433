@@ -2,16 +2,51 @@
 
 ## Overview
 
-This is a stripped-down Mayhem firmware port with work-in-progress (WIP) functionality to integrate RTL433 capabilities into the PortaPack.
+Porta-433 is a stripped-down custom firmware based on Mayhem for the PortaPack platform. It is focused on RTL433 support and keeps the firmware intentionally minimal by removing most of the standard Mayhem applications.
 
-## Status
+The goal of this project is to provide a PortaPack firmware build that:
 
-🚧 **Work In Progress** - This project is under active development and subject to frequent changes.
+- Is based on Mayhem
+- Can be flashed via the web using the same general workflow as Mayhem firmware
+- Uses a custom firmware image for Porta-433
+- Includes RTL433 protocol support
+- Parses and decodes supported RTL433 signals
 
-## Purpose
+## Release Status
 
-The goal of this project is to bring RTL433 radio frequency reception capabilities to the PortaPack platform by building upon the Mayhem firmware foundation.
+🚧 **Alpha Release**
 
-## Note
+This project is an early alpha release. It is incomplete, actively changing, and should be considered experimental.
 
-This is an experimental WIP project. Features are incomplete and may change significantly.
+## Features
+
+- Mayhem-based firmware foundation
+- Web flashing support in the same style as Mayhem
+- Custom Porta-433 firmware image
+- RTL433 protocol support
+- RTL433 signal parsing and decoding
+- Reduced application set for a lightweight build
+
+## Known limits
+
+The Portapack is limited in memory and computing power. RTL433 is designed to be a computer app, so the PortaPack version may drop valid samples or just detect the nth repetion. 
+The screen is also small for that many information.
+
+
+## Flashing
+
+Porta-433 can be flashed through the web using the same general process as Mayhem firmware, but a custom firmware build must be selected for this project. https://hackrf.app
+
+## Warnings
+
+Use at own risk.
+
+No liability is accepted for any damage, loss, malfunction, hardware issue, data loss, or other consequences resulting from the use of this firmware.
+
+## Stability
+
+As an alpha release, Porta-433 may change frequently and may contain bugs or incomplete features. Behavior, protocol support, and available functionality may change without notice.
+
+## Revert to Mayhem
+
+Just go to the https://hackrf.app and flash the latest Stable or Nightly

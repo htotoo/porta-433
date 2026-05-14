@@ -60,7 +60,7 @@ endif()
 
 option(USE_CCACHE "Enable ccache, please keep an eye on this because sometimes it's not quite stable and generated unusable binary" OFF)
 
-project(portapack-h1)
+project(porta433)
 
 set(EXPECTED_GCC_VERSION "9.2.1")
 

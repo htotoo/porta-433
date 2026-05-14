@@ -68,27 +68,18 @@ namespace pmem = portapack::persistent_memory;
 
 namespace ui {
 
-// TODO(u-foka): Check consistency of command names (where we add rx/tx postfix)
 const NavigationView::AppList NavigationView::appList = {
-    /* HOME ******************************************************************/
-    {nullptr, "Receive", HOME, Color::cyan(), &bitmap_icon_receivers, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<ReceiversMenuView>(nav); }},
+    {nullptr, "R433", HOME, Color::cyan(), &bitmap_icon_r433, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<RTL433View>(nav); }},
     {"capture", "Capture", HOME, Color::red(), &bitmap_icon_capture, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<CaptureAppView>(nav); }},
     {"replay", "Replay", HOME, Color::green(), &bitmap_icon_replay, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<PlaylistView>(nav); }},
     {"lookingglass", "Looking Glass", HOME, Color::green(), &bitmap_icon_looking, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<GlassView>(nav); }},
-    {nullptr, "Utilities", HOME, Color::cyan(), &bitmap_icon_utilities, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<UtilitiesMenuView>(nav); }},
+    {"adsbrx", "ADS-B", HOME, Color::green(), &bitmap_icon_adsb, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<ADSBRxView>(nav); }},
+    {"audio", "Audio", HOME, Color::green(), &bitmap_icon_speaker, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<AnalogAudioView>(nav); }},
+    {"search", "Search", HOME, Color::yellow(), &bitmap_icon_search, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<SearchView>(nav); }},
+    {"filemanager", "File Manager", HOME, Color::green(), &bitmap_icon_dir, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<FileManagerView>(nav); }},
+    {nullptr, "Flash Utility", HOME, Color::red(), &bitmap_icon_peripherals_details, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<FlashUtilityView>(nav); }},
+    {nullptr, "SD Over USB", HOME, Color::yellow(), &bitmap_icon_hackrf, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<SdOverUsbView>(nav); }},
     {nullptr, "Settings", HOME, Color::cyan(), &bitmap_icon_setup, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<SettingsMenuView>(nav); }},
-    {nullptr, "R433", HOME, Color::cyan(), &bitmap_icon_r433, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<RTL433View>(nav); }},
-
-    /* RX ********************************************************************/
-    {"adsbrx", "ADS-B", RX, Color::green(), &bitmap_icon_adsb, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<ADSBRxView>(nav); }},
-    {"audio", "Audio", RX, Color::green(), &bitmap_icon_speaker, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<AnalogAudioView>(nav); }},
-    {"search", "Search", RX, Color::yellow(), &bitmap_icon_search, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<SearchView>(nav); }},
-    /* UTILITIES *************************************************************/
-    {"filemanager", "File Manager", UTILITIES, Color::green(), &bitmap_icon_dir, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<FileManagerView>(nav); }},
-    //{nullptr, "Debug", UTILITIES, Color::light_grey(), &bitmap_icon_debug, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<DebugMenuView>(nav); }},
-
-    {nullptr, "Flash Utility", UTILITIES, Color::red(), &bitmap_icon_peripherals_details, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<FlashUtilityView>(nav); }},
-    {nullptr, "SD Over USB", UTILITIES, Color::yellow(), &bitmap_icon_hackrf, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<SdOverUsbView>(nav); }},
 };
 
 bool NavigationView::StartAppByName(const char* name) {
