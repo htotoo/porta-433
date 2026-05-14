@@ -329,14 +329,6 @@ set(MODE_CPPSRC
 DeclareTargets(PADR adsbrx)
 
 
-
-### AIS
-
-set(MODE_CPPSRC
-	proc_ais.cpp
-)
-DeclareTargets(PAIS ais)
-
 ### AM Audio
 
 set(MODE_CPPSRC
@@ -352,12 +344,6 @@ set(MODE_CPPSRC
 )
 DeclareTargets(PCAP capture)
 
-### Microphone transmit
-
-set(MODE_CPPSRC
-	proc_mictx.cpp
-)
-DeclareTargets(PMTX mic_tx)
 
 ### NFM Audio
 

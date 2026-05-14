@@ -175,7 +175,7 @@ set_source_files_properties(
 set_source_files_properties(
 	${RTL433_CORE_CSRC}
 	${RTL433_DEVICE_CSRC}
-	PROPERTIES COMPILE_OPTIONS "-O3"
+	PROPERTIES COMPILE_OPTIONS "-O3;-Wno-format"
 )
 
 set_source_files_properties(
@@ -193,8 +193,6 @@ set(CPPSRC
 	shell.cpp
 	${COMMON}/adsb.cpp
 	${COMMON}/adsb_frame.cpp
-	${COMMON}/ais_baseband.cpp
-	${COMMON}/ais_packet.cpp
 	${COMMON}/ak4951.cpp
 	${COMMON}/backlight.cpp
 	${COMMON}/baseband_cpld.cpp
@@ -221,13 +219,9 @@ set(CPPSRC
 	${COMMON}/png_writer.cpp
 	${COMMON}/pocsag.cpp
 	${COMMON}/pocsag_packet.cpp
-	${COMMON}/aprs_packet.cpp
 	${COMMON}/portapack_io.cpp
 	${COMMON}/portapack_persistent_memory.cpp
 	${COMMON}/portapack_shared_memory.cpp
-	${COMMON}/sonde_packet.cpp
-	# ${COMMON}/test_packet.cpp
-	${COMMON}/tpms_packet.cpp
 	${COMMON}/ui.cpp
 	${COMMON}/ui_focus.cpp
 	${COMMON}/ui_painter.cpp
@@ -323,13 +317,10 @@ set(CPPSRC
 	ui/ui_tone_key.cpp
 	ui/ui_transmitter.cpp
 	ui/ui_bmpview.cpp
-	apps/ais_app.cpp
 	apps/analog_audio_app.cpp
 	apps/capture_app.cpp
 	apps/ui_about_simple.cpp
 	apps/ui_adsb_rx.cpp
-	apps/ui_aprs_rx.cpp
-	apps/ui_aprs_tx.cpp
 	apps/ui_battinfo.cpp
 	apps/ui_bmp_file_viewer.cpp
 	apps/ui_debug.cpp
@@ -343,7 +334,6 @@ set(CPPSRC
 	apps/ui_looking_glass_app.cpp
 	apps/ui_modemsetup.cpp
 	apps/ui_playlist.cpp
-	apps/ui_recon_settings.cpp
 	apps/ui_rtl433.cpp
 	apps/ui_sd_over_usb.cpp
 	apps/ui_search.cpp

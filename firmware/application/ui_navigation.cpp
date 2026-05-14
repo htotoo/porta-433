@@ -31,7 +31,6 @@
 
 #include "ui_about_simple.hpp"
 #include "ui_adsb_rx.hpp"
-#include "ui_aprs_rx.hpp"
 #include "ui_debug.hpp"
 #include "ui_encoders.hpp"
 #include "ui_fileman.hpp"
@@ -50,7 +49,6 @@
 #include "ui_touchtunes.hpp"
 #include "ui_battinfo.hpp"
 
-#include "ais_app.hpp"
 #include "analog_audio_app.hpp"
 #include "capture_app.hpp"
 
@@ -74,45 +72,20 @@ namespace ui {
 const NavigationView::AppList NavigationView::appList = {
     /* HOME ******************************************************************/
     {nullptr, "Receive", HOME, Color::cyan(), &bitmap_icon_receivers, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<ReceiversMenuView>(nav); }},
-    //{nullptr, "Transmit", HOME, Color::cyan(), &bitmap_icon_transmit, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<TransmittersMenuView>(nav); }},
-    //{nullptr, "Transceiver", HOME, Color::cyan(), &bitmap_icon_transceivers, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<TransceiversMenuView>(nav); }},
-    //{"recon", "Recon", HOME, Color::green(), &bitmap_icon_scanner, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<ReconView>(nav); }},
     {"capture", "Capture", HOME, Color::red(), &bitmap_icon_capture, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<CaptureAppView>(nav); }},
     {"replay", "Replay", HOME, Color::green(), &bitmap_icon_replay, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<PlaylistView>(nav); }},
     {"lookingglass", "Looking Glass", HOME, Color::green(), &bitmap_icon_looking, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<GlassView>(nav); }},
     {nullptr, "Utilities", HOME, Color::cyan(), &bitmap_icon_utilities, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<UtilitiesMenuView>(nav); }},
-    //{nullptr, "Games", HOME, Color::cyan(), &bitmap_icon_games, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<GamesMenuView>(nav); }},
     {nullptr, "Settings", HOME, Color::cyan(), &bitmap_icon_setup, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<SettingsMenuView>(nav); }},
     {nullptr, "R433", HOME, Color::cyan(), &bitmap_icon_r433, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<RTL433View>(nav); }},
 
     /* RX ********************************************************************/
     {"adsbrx", "ADS-B", RX, Color::green(), &bitmap_icon_adsb, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<ADSBRxView>(nav); }},
-    //{"ais", "AIS Boats", RX, Color::green(), &bitmap_icon_ais, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<AISAppView>(nav); }},
-    //{"aprsrx", "APRS", RX, Color::green(), &bitmap_icon_aprs, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<APRSRXView>(nav); }},
     {"audio", "Audio", RX, Color::green(), &bitmap_icon_speaker, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<AnalogAudioView>(nav); }},
-    //{"blerx", "BLE Rx", RX, Color::green(), &bitmap_icon_btle, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<BLERxView>(nav); }},
-    //{"pocsag", "POCSAG", RX, Color::green(), &bitmap_icon_pocsag, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<POCSAGAppView>(nav); }},
-    //{"radiosonde", "Radiosnde", RX, Color::green(), &bitmap_icon_sonde, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<SondeView>(nav); }},
     {"search", "Search", RX, Color::yellow(), &bitmap_icon_search, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<SearchView>(nav); }},
-    //{"subghzd", "SubGhzD", RX, Color::yellow(), &bitmap_icon_remote, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<SubGhzDView>(nav); }},
-    //{"weather", "Weather", RX, Color::green(), &bitmap_icon_thermometer, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<WeatherView>(nav); }},
-
-    /* TX ********************************************************************/
-    //{"aprstx", "APRS TX", TX, ui::Color::green(), &bitmap_icon_aprs, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<APRSTXView>(nav); }},
-    //{"bletx", "BLE Tx", TX, ui::Color::green(), &bitmap_icon_btle, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<BLETxView>(nav); }},
-    //{"ooktx", "OOK", TX, ui::Color::yellow(), &bitmap_icon_remote, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<EncodersView>(nav); }},
-    //{"rdstx", "RDS", TX, ui::Color::green(), &bitmap_icon_rds, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<RDSView>(nav); }},
-    //{"touchtune", "TouchTune", TX, ui::Color::green(), &bitmap_icon_touchtunes, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<TouchTunesView>(nav); }},
-
-    /* TRX ********************************************************************/
-    //{"microphone", "Mic", TRX, Color::green(), &bitmap_icon_microphone, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<MicTXView>(nav); }},
-
     /* UTILITIES *************************************************************/
     {"filemanager", "File Manager", UTILITIES, Color::green(), &bitmap_icon_dir, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<FileManagerView>(nav); }},
-    //{"freqman", "Freq. Manager", UTILITIES, Color::green(), &bitmap_icon_freqman, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<FrequencyManagerView>(nav); }},
-    //{"iqtrim", "IQ Trim", UTILITIES, Color::orange(), &bitmap_icon_trim, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<IQTrimView>(nav); }},
-    //{"notepad", "Notepad", UTILITIES, Color::dark_cyan(), &bitmap_icon_notepad, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<TextEditorView>(nav); }},
-    {nullptr, "Debug", UTILITIES, Color::light_grey(), &bitmap_icon_debug, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<DebugMenuView>(nav); }},
+    //{nullptr, "Debug", UTILITIES, Color::light_grey(), &bitmap_icon_debug, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<DebugMenuView>(nav); }},
 
     {nullptr, "Flash Utility", UTILITIES, Color::red(), &bitmap_icon_peripherals_details, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<FlashUtilityView>(nav); }},
     {nullptr, "SD Over USB", UTILITIES, Color::yellow(), &bitmap_icon_hackrf, [](NavigationView& nav) -> std::unique_ptr<View> { return std::make_unique<SdOverUsbView>(nav); }},
@@ -917,9 +890,6 @@ SystemView::SystemView(
 
     add_child(&notification_view);
 
-    if (pmem::config_splash()) {
-        navigation_view.push<SplashScreenView>();
-    }
     status_view.set_back_enabled(false);
     status_view.set_title_image_enabled(true);
     status_view.set_dirty();
