@@ -44,16 +44,16 @@ class RTL433View : public View {
 
    private:
     class ParserBridge;
-
+    void on_tick_second();
     void on_freqchg(int64_t freq);
     void on_packet(const RtlPulsePacketData* packet);
     void append_decoded_results(const RtlPulsePacketData* packet);
-
+    SignalToken signal_token_tick_second{};
     NavigationView& nav_;
     RxRadioState radio_state_{
         433'920'000 /* frequency */,
         1'750'000 /* bandwidth */,
-        4'000'000 /* sampling rate */,
+        1'750'000 /* sampling rate */,
         ReceiverModel::Mode::AMAudio};
 
     uint8_t modulation_{0};  // 0 = AM/OOK, 1 = FM/FSK
@@ -84,6 +84,11 @@ class RTL433View : public View {
         3,
         {{"AM", 0}, {"FM", 1}}};
 
+    ActivityDot status_frame{
+        {UI_POS_X_RIGHT(2) + 2, 10, 4, 4},
+        Theme::getInstance()->bg_darkest->foreground,
+    };
+
     Console console{{0, 32, screen_width, screen_height - 32 - 16}};
 
     std::unique_ptr<ParserBridge> parser_bridge_{};
@@ -99,6 +104,10 @@ class RTL433View : public View {
         Message::ID::RtlPulsePacket,
         [this](Message* const p) {
             const auto message = static_cast<const RtlPulsePacketData*>(p);
+            uint16_t min_pulses = (modulation_ == 0) ? 12 : 12;
+            if (message == nullptr || message->num_pulses < min_pulses) {
+                return;
+            }
             this->on_packet(message);
         }};
 };

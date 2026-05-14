@@ -365,7 +365,10 @@ RTL433View::RTL433View(NavigationView& nav)
                   &field_frequency,
                   &button_clear,
                   &options_modulation,
+                  &status_frame,
                   &console});
+
+    receiver_model.set_sampling_rate(1'750'000);
 
     button_clear.on_select = [this](Button&) {
         console.clear(true);
@@ -382,13 +385,20 @@ RTL433View::RTL433View(NavigationView& nav)
     options_modulation.set_by_value(modulation_ ? 1 : 0);
     baseband::set_subghzd_config(modulation_, receiver_model.sampling_rate());
     receiver_model.enable();
+    signal_token_tick_second = rtc_time::signal_tick_second += [this]() {
+        on_tick_second();
+    };
 }
 
 RTL433View::~RTL433View() {
+    rtc_time::signal_tick_second -= signal_token_tick_second;
     receiver_model.disable();
     baseband::shutdown();
 }
 
+void RTL433View::on_tick_second() {
+    status_frame.reset();
+}
 void RTL433View::focus() {
     field_frequency.focus();
 }
@@ -398,10 +408,10 @@ void RTL433View::on_freqchg(int64_t freq) {
 }
 
 void RTL433View::on_packet(const RtlPulsePacketData* packet) {
-    if (packet == nullptr || packet->num_pulses == 0 || packet->num_pulses <= 8) {
+    if (packet == nullptr || packet->num_pulses == 0) {
         return;
     }
-
+    status_frame.toggle();
     append_decoded_results(packet);
 }
 
