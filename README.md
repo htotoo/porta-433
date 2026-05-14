@@ -51,6 +51,12 @@ As an alpha release, Porta-433 may change frequently and may contain bugs or inc
 
 Just go to the https://hackrf.app and flash the latest Stable or Nightly
 
+## Contributions
+
+PRs are welcome.
+
+If your change is firmware-related but not RTL433-specific, please submit it to the Mayhem firmware project instead.
+
 ## Thanks
 
 This project is made possible thanks to:
@@ -60,4 +66,5 @@ This project is made possible thanks to:
 - The **HackRF** team members and community
 
 Thank you all for making this possible.
+
 
