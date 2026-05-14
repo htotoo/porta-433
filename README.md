@@ -67,4 +67,9 @@ This project is made possible thanks to:
 
 Thank you all for making this possible.
 
+## Screenshots
+
+![Main screen](.github/screenshots/main.png)
+
+![R433 app](.github/screenshots/rtl1.png)
 
