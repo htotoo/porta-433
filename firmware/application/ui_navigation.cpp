@@ -182,12 +182,8 @@ SystemStatusView::SystemStatusView(
             this->on_back();
     };
 
-    button_title.on_select = [this](ImageButton&) {
+    button_title.on_select = [this](Button&) {
         this->on_title();
-    };
-
-    button_converter.on_select = [this](ImageButton&) {
-        this->on_converter();
     };
 
     toggle_speaker.on_change = [this](bool v) {
@@ -202,24 +198,8 @@ SystemStatusView::SystemStatusView(
         refresh();
     };
 
-    toggle_stealth.on_change = [this, &nav](bool v) {
-        pmem::set_stealth_mode(v);
-        if (nav.is_valid() && v) {
-            nav.display_modal(
-                "Stealth",
-                "You just enabled stealth mode.\n"
-                "When you transmit,\n"
-                "screen will turn off;\n");
-        }
-        refresh();
-    };
-
     battery_icon.on_select = [this]() { on_battery_details(); };
     battery_text.on_select = [this]() { on_battery_details(); };
-
-    button_bias_tee.on_select = [this](ImageButton&) {
-        this->on_bias_tee();
-    };
 
     button_fake_brightness.on_select = [this](ImageButton&) {
         set_dirty();
@@ -250,7 +230,6 @@ SystemStatusView::SystemStatusView(
     // Initialize toggle buttons
     toggle_speaker.set_value(pmem::config_speaker_disable());
     toggle_mute.set_value(pmem::config_audio_mute());
-    toggle_stealth.set_value(pmem::stealth_mode());
 
     audio::output::stop();
     audio::output::update_audio_mute();
@@ -313,9 +292,6 @@ void SystemStatusView::refresh() {
     status_icons.clear();
     if (!pmem::ui_hide_camera()) status_icons.add(&button_camera);
     if (!pmem::ui_hide_sleep()) status_icons.add(&button_sleep);
-    if (!pmem::ui_hide_stealth()) status_icons.add(&toggle_stealth);
-    if (!pmem::ui_hide_converter()) status_icons.add(&button_converter);
-    if (!pmem::ui_hide_bias_tee()) status_icons.add(&button_bias_tee);
     if (!pmem::ui_hide_clock()) status_icons.add(&button_clock_status);
     if (!pmem::ui_hide_mute()) status_icons.add(&toggle_mute);
 
@@ -341,19 +317,6 @@ void SystemStatusView::refresh() {
     bool external_clk = portapack::clock_manager.get_reference().source == ClockManager::ReferenceSource::External;
     button_clock_status.set_bitmap(external_clk ? &bitmap_icon_clk_ext : &bitmap_icon_clk_int);
     button_clock_status.set_foreground(pmem::clkout_enabled() ? *Theme::getInstance()->status_active : Theme::getInstance()->fg_light->foreground);
-
-    // Antenna DC Bias
-    if (portapack::get_antenna_bias()) {
-        button_bias_tee.set_bitmap(&bitmap_icon_biast_on);
-        button_bias_tee.set_foreground(Theme::getInstance()->warning_dark->foreground);
-    } else {
-        button_bias_tee.set_bitmap(&bitmap_icon_biast_off);
-        button_bias_tee.set_foreground(Theme::getInstance()->fg_light->foreground);
-    }
-
-    // Converter
-    button_converter.set_bitmap(pmem::config_updown_converter() ? &bitmap_icon_downconvert : &bitmap_icon_upconvert);
-    button_converter.set_foreground(pmem::config_converter() ? Theme::getInstance()->fg_red->foreground : Theme::getInstance()->fg_light->foreground);
 
     // Fake Brightness
     button_fake_brightness.set_foreground(pmem::apply_fake_brightness() ? *Theme::getInstance()->status_active : Theme::getInstance()->fg_light->foreground);
@@ -388,43 +351,6 @@ void SystemStatusView::set_title(const std::string new_value) {
         // Limit length of title string to prevent partial characters if too many StatusView icons
         size_t max_len = (status_icons.parent_rect().left() - title.parent_rect().left()) / 8;
         title.set(truncate(new_value, max_len));
-    }
-}
-
-void SystemStatusView::on_converter() {
-    pmem::set_config_converter(!pmem::config_converter());
-
-    // Poke to update tuning
-    // NOTE: Code assumes here that a TX app isn't active, since RX & TX have diff tuning offsets
-    // (and there's only one tuner in the radio so can't update tuner for both).
-    // TODO: Maybe expose the 'enabled_' flag on models.
-    receiver_model.set_target_frequency(receiver_model.target_frequency());
-    refresh();
-}
-
-void SystemStatusView::on_bias_tee() {
-    if (!portapack::get_antenna_bias()) {
-        nav_.display_modal(
-            "Bias voltage",
-            "Enable DC voltage on\nantenna connector?",
-            YESNO,
-            [this](bool v) {
-                if (v) {
-                    portapack::set_antenna_bias(true);
-                    receiver_model.set_antenna_bias();
-                    transmitter_model.set_antenna_bias();
-                    refresh();
-                }
-            });
-    } else {
-        portapack::set_antenna_bias(false);
-        receiver_model.set_antenna_bias();
-        transmitter_model.set_antenna_bias();
-
-        // Ensure this is disabled. The models don't actually
-        // update the radio unless they are 'enabled_'.
-        radio::set_antenna_bias(false);
-        refresh();
     }
 }
 

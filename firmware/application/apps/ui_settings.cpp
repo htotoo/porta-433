@@ -1272,25 +1272,25 @@ void SettingsMenuView::on_populate() {
     }
 
     add_items({
-        {"App Settings", ui::Color::dark_cyan(), &bitmap_icon_notepad, [this]() { nav_.push<AppSettingsView>(); }},
+        //{"App Settings", ui::Color::dark_cyan(), &bitmap_icon_notepad, [this]() { nav_.push<AppSettingsView>(); }},
         {"Audio", ui::Color::dark_cyan(), &bitmap_icon_speaker, [this]() { nav_.push<SetAudioView>(); }},
         {"Calibration", ui::Color::dark_cyan(), &bitmap_icon_options_touch, [this]() { nav_.push<TouchCalibrationView>(); }},
         {"TouchThreshold", ui::Color::dark_cyan(), &bitmap_icon_options_touch, [this]() { nav_.push<SetTouchscreenThresholdView>(); }},
         {"Config Mode", ui::Color::dark_cyan(), &bitmap_icon_clk_ext, [this]() { nav_.push<SetConfigModeView>(); }},
-        {"Converter", ui::Color::dark_cyan(), &bitmap_icon_options_radio, [this]() { nav_.push<SetConverterSettingsView>(); }},
+        //{"Converter", ui::Color::dark_cyan(), &bitmap_icon_options_radio, [this]() { nav_.push<SetConverterSettingsView>(); }},
         {"Date/Time", ui::Color::dark_cyan(), &bitmap_icon_options_datetime, [this]() { nav_.push<SetDateTimeView>(); }},
         {"Encoder Dial", ui::Color::dark_cyan(), &bitmap_icon_setup, [this]() { nav_.push<SetEncoderDialView>(); }},
         {"Button Speed", ui::Color::dark_cyan(), &bitmap_icon_controls, [this]() { nav_.push<SetButtonsView>(); }},
         {"Freq. Correct", ui::Color::dark_cyan(), &bitmap_icon_options_radio, [this]() { nav_.push<SetFrequencyCorrectionView>(); }},
         {"P.Memory Mgmt", ui::Color::dark_cyan(), &bitmap_icon_memory, [this]() { nav_.push<SetPersistentMemoryView>(); }},
         {"Radio", ui::Color::dark_cyan(), &bitmap_icon_options_radio, [this]() { nav_.push<SetRadioView>(); }},
-        {"TX Limit", ui::Color::dark_cyan(), &bitmap_icon_options_radio, [this]() { nav_.push<SetTXLimitView>(); }},
+        //{"TX Limit", ui::Color::dark_cyan(), &bitmap_icon_options_radio, [this]() { nav_.push<SetTXLimitView>(); }},
         {"SD Card", ui::Color::dark_cyan(), &bitmap_icon_sdcard, [this]() { nav_.push<SetSDCardView>(); }},
         {"User Interface", ui::Color::dark_cyan(), &bitmap_icon_options_ui, [this]() { nav_.push<SetUIView>(); }},
         {"Display", ui::Color::dark_cyan(), &bitmap_icon_brightness, [this]() { nav_.push<SetDisplayView>(); }},
         {"Menu Color", ui::Color::dark_cyan(), &bitmap_icon_brightness, [this]() { nav_.push<SetMenuColorView>(); }},
         {"Theme", ui::Color::dark_cyan(), &bitmap_icon_setup, [this]() { nav_.push<SetThemeView>(); }},
-        {"Splash settings", ui::Color::dark_cyan(), &bitmap_icon_file_image, [this]() { nav_.push<SetSplash>(); }},
+        //{"Splash settings", ui::Color::dark_cyan(), &bitmap_icon_file_image, [this]() { nav_.push<SetSplash>(); }},
     });
 
     if (battery::BatteryManagement::isDetected()) add_item({"Battery", ui::Color::dark_cyan(), &bitmap_icon_batt_icon, [this]() { nav_.push<SetBatteryView>(); }});

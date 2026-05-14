@@ -231,11 +231,9 @@ class SystemStatusView : public View {
         default_title,
     };
 
-    ImageButton button_title{
+    Button button_title{
         {2, 0, 80, 16},
-        &bitmap_titlebar_image,
-        Theme::getInstance()->bg_dark->foreground,
-        Theme::getInstance()->bg_dark->background};
+        "Porta-433"};
 
     StatusTray status_icons{{screen_width, 0}};
 
@@ -257,21 +255,6 @@ class SystemStatusView : public View {
         *Theme::getInstance()->status_active,
         Theme::getInstance()->bg_dark->background};
 
-    ImageButton button_converter{
-        {0, 0, 2 * 8, 1 * 16},
-        &bitmap_icon_upconvert,
-        Theme::getInstance()->fg_light->foreground,
-        Theme::getInstance()->bg_dark->background};
-
-    ImageToggle toggle_stealth{
-        {0, 0, 2 * 8, 1 * 16},
-        &bitmap_icon_stealth,
-        &bitmap_icon_stealth,
-        *Theme::getInstance()->status_active,
-        Theme::getInstance()->bg_dark->background,
-        Theme::getInstance()->fg_light->foreground,
-        Theme::getInstance()->bg_dark->background};
-
     ImageButton button_camera{
         {0, 0, 2 * 8, 1 * 16},
         &bitmap_icon_camera,
@@ -282,12 +265,6 @@ class SystemStatusView : public View {
         {0, 0, 2 * 8, 1 * 16},
         &bitmap_icon_sleep,
         Theme::getInstance()->bg_dark->foreground,
-        Theme::getInstance()->bg_dark->background};
-
-    ImageButton button_bias_tee{
-        {0, 0, 2 * 8, 1 * 16},
-        &bitmap_icon_biast_off,
-        Theme::getInstance()->fg_light->foreground,
         Theme::getInstance()->bg_dark->background};
 
     ImageButton button_clock_status{
@@ -308,8 +285,6 @@ class SystemStatusView : public View {
     BatteryTextField battery_text{{0, 0, 2 * 8, 1 * 16}, 102};
     BatteryIcon battery_icon{{0, 0, 10, 1 * 16}, 102};
 
-    void on_converter();
-    void on_bias_tee();
     void on_camera();
     void on_title();
     void refresh();
