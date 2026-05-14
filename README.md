@@ -50,3 +50,14 @@ As an alpha release, Porta-433 may change frequently and may contain bugs or inc
 ## Revert to Mayhem
 
 Just go to the https://hackrf.app and flash the latest Stable or Nightly
+
+## Thanks
+
+This project is made possible thanks to:
+
+- The **Mayhem** project and its contributors
+- The **RTL433** project and its contributors
+- The **HackRF** team members and community
+
+Thank you all for making this possible.
+
