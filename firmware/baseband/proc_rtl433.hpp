@@ -67,7 +67,7 @@ class RTL433Processor : public BasebandProcessor {
         int32_t dev_lp{0};
     };
 
-    static constexpr uint32_t baseband_fs_default = 2457600;
+    static constexpr uint32_t baseband_fs_default = 1'750'000;
     static constexpr uint8_t total_decimation = 8;
 
     static constexpr uint16_t pd_min_pulses = 16;
@@ -117,13 +117,10 @@ class RTL433Processor : public BasebandProcessor {
     void configure(const SubGhzFPRxConfigureMessage& message);
     void on_beep_message(const AudioBeepMessage& message);
 
-    uint32_t get_detection_level_am(const complex16_t& sample) const;
-    uint32_t get_detection_level_fm(const complex16_t& sample);
-    bool detect_package_from_level_am(uint32_t level, bool level_is_high);
-    bool detect_package_from_level_fm(bool level_is_high);
-    bool apply_glitch_filter(bool raw_level);
-    void emit_pulse_package();
-    void reset_pulse_detector();
+    inline bool detect_package_from_level_am(uint32_t level, bool level_is_high);
+    inline bool detect_package_from_level_fm(bool level_is_high);
+    inline void emit_pulse_package();
+    inline void reset_pulse_detector();
 
     BasebandThread baseband_thread{baseband_fs, this, baseband::Direction::Receive};
     RSSIThread rssi_thread{};
