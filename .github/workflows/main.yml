@@ -1,0 +1,122 @@
+name: Nightly Release
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+
+  workflow_dispatch:
+
+jobs:
+  check_date:
+    runs-on: ubuntu-latest
+    name: Check latest commit
+    outputs:
+      should_run: ${{ steps.should_run.outputs.should_run }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: print latest_commit
+        run: echo ${{ github.sha }}
+
+      - name: check latest commit is less than a day
+        id: should_run
+        continue-on-error: true
+        run: test -z $(git rev-list  --after="24 hours" ${{ github.sha }}) && echo "should_run=false" >> $GITHUB_OUTPUT
+
+  build:
+    needs: check_date
+    if: ${{ needs.check_date.outputs.should_run != 'false' }}
+    runs-on: ubuntu-latest
+    name: build (${{ matrix.device_name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - device: default
+            device_name: HackRF
+            cmake_args: ""
+            artifact_suffix: "_hackrf"
+          - device: portarf
+            device_name: PortaRF
+            cmake_args: "-DFLASH_MB_SIZE=2 -DFLASH_MB_LIMIT_SIZE=2"
+            artifact_suffix: "_portarf"
+          - device: hpro
+            device_name: HackRF Pro
+            cmake_args: "-DBOARD=PRALINE"
+            artifact_suffix: "_hpro"
+    steps:
+      - name: Get version date
+        id: version_date
+        run: echo "date=n_$(date +'%y%m%d')" >> $GITHUB_OUTPUT
+      - name: Checkout
+        uses: actions/checkout@master
+        with:
+          fetch-depth: 0
+          submodules: true
+      - name: Git Sumbodule Update
+        run: |
+          git submodule update --init --recursive
+      - name: Build the Docker image
+        run: docker build -t portapack-dev -f dockerfile-nogit . --tag my-image-name:$(date +%s)
+      - name: Make build folder
+        run: mkdir ${{ github.workspace }}/build
+      - name: Run the Docker image
+        run: docker run -e VERSION_STRING=${{ steps.version_date.outputs.date }} -i -v ${{ github.workspace }}:/havoc portapack-dev ${{ matrix.cmake_args }}
+      - name: Upload OCI tar artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: oci-tar-${{ matrix.device }}
+          path: build/firmware/porta433_OCI.ppfw.tar
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Get current date
+        id: date
+        run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+      - name: Get version date
+        id: version_date
+        run: echo "date=n_$(date +'%y%m%d')" >> $GITHUB_OUTPUT
+      - name: Checkout
+        uses: actions/checkout@master
+        with:
+          fetch-depth: 0
+          submodules: true
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Create changelog
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          {
+            echo 'content<<EOF'
+            python3 .github/workflows/changelog.py
+            echo EOF
+          } >> "$GITHUB_OUTPUT"
+        id: changelog
+      - name: Prepare release assets
+        run: |
+          VER="${{ steps.version_date.outputs.date }}"
+          mkdir -p release_assets
+          # OCI tar assets
+          cp artifacts/oci-tar-default/porta433_OCI.ppfw.tar "release_assets/OCI_hackrf_porta433_nightly_${VER}.ppfw.tar"
+          cp artifacts/oci-tar-portarf/porta433_OCI.ppfw.tar "release_assets/OCI_portarf_porta433_nightly_${VER}.ppfw.tar"
+          cp artifacts/oci-tar-hpro/porta433_OCI.ppfw.tar "release_assets/OCI_hpro_porta433_nightly_${VER}.ppfw.tar"
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: nightly-tag-${{ steps.date.outputs.date }}
+          name: Nightly Release - ${{ steps.date.outputs.date }}
+          body: |
+            **Nightly release - ${{ steps.date.outputs.date }}**
+            This build is the latest and greatest, although may not be the most stable as this is a nightly release.
+            ## Release notes
+            ###  Revision (${{ steps.version_date.outputs.date }}):
+            ${{ steps.changelog.outputs.content }}
+          draft: false
+          prerelease: true
+          files: release_assets/*
