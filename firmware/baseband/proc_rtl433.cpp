@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2026
+ * Copyright (C) 2026 HTotoo
  *
  * This file is part of PortaPack.
  *
@@ -34,12 +34,10 @@ void RTL433Processor::execute(const buffer_c8_t& buffer) {
 
     if (modulation == Modulation::AM_OOK) {
         for (size_t i = 0; i < decim_1_out.count; ++i) {
-            // --- INLINE AM MAGNITUDE CALCULATION ---
             const int32_t re = decim_1_out.p[i].real();
             const int32_t im = decim_1_out.p[i].imag();
             const uint32_t level = static_cast<uint32_t>(re * re + im * im) >> 10;
 
-            // --- INLINE THRESHOLD MATH ---
             const uint32_t high_est = (ook_high_estimate < ook_max_high_level) ? ook_high_estimate : ook_max_high_level;
             const uint32_t threshold = (ook_low_estimate + high_est) >> 1;
             const uint32_t thresh_div_8 = threshold >> 3;
@@ -52,7 +50,6 @@ void RTL433Processor::execute(const buffer_c8_t& buffer) {
                 raw_level = false;
             }
 
-            // --- INLINE GLITCH FILTER ---
             if (raw_level == stable_level) {
                 glitch_duration = 0;
             } else {
@@ -64,9 +61,7 @@ void RTL433Processor::execute(const buffer_c8_t& buffer) {
             }
             const bool high_level = stable_level;
 
-            // --- ÚJ: AM FAST PATH (Zajkövetés decimálása) ---
             if (!high_level && ook_state == OOKState::Idle) {
-                // Csak minden 16. mintánál frissítjük a zajszintet (sok CPU-időt spórolunk!)
                 if ((i & 0x0F) == 0) {
                     int32_t error = static_cast<int32_t>(level) - static_cast<int32_t>(ook_low_estimate);
                     int32_t step = error >> 10;
@@ -94,9 +89,8 @@ void RTL433Processor::execute(const buffer_c8_t& buffer) {
         return;
     }
 
-    // FM FELDOLGOZÁS
+    // FM
     for (size_t i = 0; i < decim_1_out.count; ++i) {
-        // --- INLINE FM DISCRIMINATOR ---
         const int32_t re = decim_1_out.p[i].real();
         const int32_t im = decim_1_out.p[i].imag();
         const int32_t re_s = re >> 2;
@@ -120,7 +114,6 @@ void RTL433Processor::execute(const buffer_c8_t& buffer) {
                 continue;  // FM FAST PATH
             }
 
-            // Ha ide jutunk, akkor a jelet most engedtük el
             if (false == stable_level) {
                 glitch_duration = 0;
             } else {
@@ -150,7 +143,6 @@ void RTL433Processor::execute(const buffer_c8_t& buffer) {
             raw_level = false;
         }
 
-        // --- INLINE GLITCH FILTER (FM) ---
         if (raw_level == stable_level) {
             glitch_duration = 0;
         } else {
