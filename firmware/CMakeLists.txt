@@ -116,7 +116,7 @@ add_custom_command(
 	COMMAND rm -rf firmware_tar
 	COMMAND mkdir -p firmware_tar/FIRMWARE
 	# Using VERSION_NOHASH to avoid dev builds piling up in the FIRMWARE folder of the sd card of testers in #test-drive
-	COMMAND cp ${FIRMWARE_FILENAME} firmware_tar/FIRMWARE/portapack-mayhem_${VERSION_NOHASH}.bin
+	COMMAND cp ${FIRMWARE_FILENAME} firmware_tar/FIRMWARE/porta433_${VERSION_NOHASH}.bin
 	#COMMAND mkdir -p firmware_tar/APPS
 	#COMMAND cp application/*.ppma firmware_tar/APPS
 	COMMAND cd firmware_tar && tar -cvaf ../${PPFW_FILENAME} *
