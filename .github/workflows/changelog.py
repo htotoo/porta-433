@@ -4,17 +4,17 @@ import sys
 import requests
 from datetime import datetime, timedelta, timezone
 
-# Set up your personal access token and the repository details
 token = os.environ.get('GH_TOKEN')
-repo_owner = "htotoo"
-repo_name = "porta433"
+repo_slug = os.environ.get('GITHUB_REPOSITORY', 'htotoo/porta-433')
+repo_owner, repo_name = repo_slug.split('/', 1)
 
 
 def print_stable_changelog(previous_sha):
     url = f"compare/{previous_sha}...main"
     commits = handle_get_request(url)
-    for commit in commits["commits"]:
-        # Print the commit details
+    if not commits:
+        return
+    for commit in commits.get("commits", []):
         print(format_output(commit))
 
 
@@ -23,22 +23,26 @@ def print_nightly_changelog():
     since_time = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()  # Check that this is UTC
     url = "commits"
     commits = handle_get_request(url, since_time)
+    if not commits:
+        return
     for commit in commits:
-        # Print the commit details
         print(format_output(commit))
 
 
 def handle_get_request(path, offset=None):
-    headers = {} if token == None else {"Authorization": f"Bearer {token}"}
-    params = {"since": offset}
+    headers = {} if token is None else {"Authorization": f"Bearer {token}"}
+    params = {"since": offset} if offset else None
     url_base = f"https://api.github.com/repos/{repo_owner}/{repo_name}/"
-    response = requests.get(url_base + path, headers=headers, params=params)
+    response = requests.get(url_base + path, headers=headers, params=params, timeout=30)
 
     # Check if the request was successful (status code 200)
     if response.status_code == 200:
         return response.json()
-    else:
-        print(f"Request failed with status code: {response.status_code}")
+
+    print(
+        f"Request failed for {url_base + path} with status code: {response.status_code}",
+        file=sys.stderr,
+    )
     return None
 
 
