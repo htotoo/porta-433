@@ -32,6 +32,8 @@ This project is an early alpha release. It is incomplete, actively changing, and
 The Portapack is limited in memory and computing power. RTL433 is designed to be a computer app, so the PortaPack version may drop valid samples or just detect the nth repetion. 
 The screen is also small for that many information.
 
+No AGC, so you must set the AMP, LNA, VGA to the correct levels, to get a clean signal, that can be processed.
+
 
 ## Flashing
 
